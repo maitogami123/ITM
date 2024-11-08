@@ -1,9 +1,17 @@
 const mongoose = require("mongoose");
+const bcrypt = require("bcrypt");
+const UserRole = require("./enum/UserRole"); // Import the enum
 
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  role: { type: String, required: true, enum: ["superadmin", "leader", "lecturer"] },
+  role: {
+    type: String,
+    required: true,
+    // enum: ["superadmin", "leader", "lecturer"],
+    enum: Object.values(UserRole), // Use values from UserRole enum
+    default: UserRole.LECTURER,
+  },
 });
 
 userSchema.pre("save", async function (next) {
