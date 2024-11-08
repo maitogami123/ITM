@@ -5,6 +5,7 @@ const userRoutes = require("./routes/userRoutes");
 const positionRoutes = require("./routes/positionRoutes");
 const rewardRoutes = require("./routes/rewardRoutes");
 const staffRoutes = require("./routes/staffRoutes");
+const unitRoutes = require("./routes/unitRoutes");
 const competitionRoutes = require("./routes/competitionRoutes");
 const authMiddleware = require("./middlewares/authMiddleware");
 const app = express();
@@ -24,6 +25,7 @@ app.use("/api/rewards", rewardRoutes);
 app.use("/api/positions", positionRoutes);
 app.use("/api/competitions", competitionRoutes);
 app.use("/api/staff", staffRoutes);
+app.use("/api/unit", unitRoutes);
 
 // Start server
 app.listen(port, () => {
