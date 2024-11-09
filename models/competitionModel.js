@@ -8,11 +8,11 @@ const researchProjectSchema = new mongoose.Schema({
 });
 
 const competitionSchema = new mongoose.Schema({
-  year: { type: Number, required: true },
   title: { type: String, required: true },
+  year: { type: Number, required: true },
   description: { type: String, required: true },
   projects: [researchProjectSchema],
-  participants: [{ type: mongoose.Schema.Types.ObjectId, ref: "Staff" }],
+  staffs: [{ type: mongoose.Schema.Types.ObjectId, ref: "Staff" }],
   rewards: [{ type: mongoose.Schema.Types.ObjectId, ref: "Reward" }],
 });
 
