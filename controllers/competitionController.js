@@ -1,14 +1,17 @@
-const Competition = require('../models/competitionModel');
-const fs = require('fs');
-const path = require('path');
-const { Parser } = require('json2csv');
+const Competition = require("../models/competitionModel");
+const fs = require("fs");
+const path = require("path");
+const { Parser } = require("json2csv");
 
 // Create a new competition
 exports.createCompetition = async (req, res) => {
   const competition = new Competition(req.body);
   try {
     const newCompetition = await competition.save();
-    res.status(201).json({ message: 'Competition created successfully', competition: newCompetition });
+    res.status(201).json({
+      message: "Competition created successfully",
+      competition: newCompetition,
+    });
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
@@ -28,7 +31,8 @@ exports.getCompetitions = async (req, res) => {
 exports.getCompetitionById = async (req, res) => {
   try {
     const competition = await Competition.findById(req.params.id);
-    if (!competition) return res.status(404).json({ message: 'Competition not found' });
+    if (!competition)
+      return res.status(404).json({ message: "Competition not found" });
     res.json(competition);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -37,18 +41,21 @@ exports.getCompetitionById = async (req, res) => {
 
 // Update a competition by ID
 exports.updateCompetition = async (req, res) => {
-  const { year, title, description, projects } = req.body;
+  const { year, title, description, projects, staffs, rewards } = req.body;
   try {
     const competition = await Competition.findById(req.params.id);
-    if (!competition) return res.status(404).json({ message: 'Competition not found' });
+    if (!competition)
+      return res.status(404).json({ message: "Competition not found" });
 
     competition.year = year || competition.year;
     competition.title = title || competition.title;
     competition.description = description || competition.description;
     competition.projects = projects || competition.projects;
+    competition.staffs = staffs || competition.staffs;
+    competition.rewards = rewards || competition.rewards;
 
     await competition.save();
-    res.json({ message: 'Competition updated successfully', competition });
+    res.json({ message: "Competition updated successfully", competition });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -58,8 +65,9 @@ exports.updateCompetition = async (req, res) => {
 exports.deleteCompetition = async (req, res) => {
   try {
     const competition = await Competition.findByIdAndDelete(req.params.id);
-    if (!competition) return res.status(404).json({ message: 'Competition not found' });
-    res.json({ message: 'Competition deleted successfully' });
+    if (!competition)
+      return res.status(404).json({ message: "Competition not found" });
+    res.json({ message: "Competition deleted successfully" });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -70,11 +78,12 @@ exports.addProjectToCompetition = async (req, res) => {
   const { title, description, startDate, endDate } = req.body;
   try {
     const competition = await Competition.findById(req.params.id);
-    if (!competition) return res.status(404).json({ message: 'Competition not found' });
+    if (!competition)
+      return res.status(404).json({ message: "Competition not found" });
 
     competition.projects.push({ title, description, startDate, endDate });
     await competition.save();
-    res.json({ message: 'Project added successfully', competition });
+    res.json({ message: "Project added successfully", competition });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -85,11 +94,12 @@ exports.removeProjectFromCompetition = async (req, res) => {
   const { projectId } = req.params;
   try {
     const competition = await Competition.findById(req.params.id);
-    if (!competition) return res.status(404).json({ message: 'Competition not found' });
+    if (!competition)
+      return res.status(404).json({ message: "Competition not found" });
 
-    competition.projects.id(projectId).remove();
+    competition.projects.remove(projectId).remove();
     await competition.save();
-    res.json({ message: 'Project removed successfully', competition });
+    res.json({ message: "Project removed successfully", competition });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -98,27 +108,32 @@ exports.removeProjectFromCompetition = async (req, res) => {
 // Export statistics of competitions
 exports.exportCompetitionStatistics = async (req, res) => {
   try {
-    const competitions = await Competition.find().populate('participants');
+    const competitions = await Competition.find().populate("staffs");
 
     // Prepare data for CSV export
     const data = competitions.map((competition) => ({
       year: competition.year,
       title: competition.title,
       description: competition.description,
-      participants: competition.participants.map((p) => p.name).join(', '),
+      staffs: competition.staffs.map((p) => p.name).join(", "),
     }));
 
     // Define fields for CSV
-    const fields = ['year', 'title', 'description', 'participants'];
+    const fields = ["year", "title", "description", "staffs"];
     const json2csvParser = new Parser({ fields });
     const csv = json2csvParser.parse(data);
 
     // Write CSV to file
-    const filePath = path.join(__dirname, '..', 'exports', 'competition_statistics.csv');
+    const filePath = path.join(
+      __dirname,
+      "..",
+      "exports",
+      "competition_statistics.csv"
+    );
     fs.writeFileSync(filePath, csv);
 
     // Send file as response
-    res.download(filePath, 'competition_statistics.csv');
+    res.download(filePath, "competition_statistics.csv");
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

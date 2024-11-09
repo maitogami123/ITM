@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon --watch src --exec node app.js",
+    "start": "nodemon --watch . --ignore exports --exec node app.js",
     "dev": "nodemon app.js"
   },
   "keywords": [],

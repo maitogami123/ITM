@@ -3,9 +3,7 @@ const QualificationCode = require("./enum/QualificationCode"); // Import the enu
 const Gender = require("./enum/Gender");
 
 const staffSchema = new mongoose.Schema({
-  // mscb này có bị dư kh? staff_id = mscb kh?
   mscb: { type: String, unique: true, required: true },
-  //
   name: { type: String, required: true },
   gender: {
     type: String,

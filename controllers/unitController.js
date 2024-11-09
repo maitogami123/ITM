@@ -16,9 +16,14 @@ exports.createUnit = async (req, res) => {
 // Get all unit members
 exports.getUnit = async (req, res) => {
   try {
-    const unitList = await Unit.find().populate(
-      "positions unit rewards annualCompetitions"
-    );
+    const unitList = await Unit.find().populate("staffs");
+    // const unit = await Unit.find().populate({
+    //   path: "staffs",
+    //   populate: {
+    //     path: "positions",
+    //     model: "Position",
+    //   },
+    // });
     res.json(unitList);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -28,9 +33,16 @@ exports.getUnit = async (req, res) => {
 // Get a single unit member by ID
 exports.getUnitById = async (req, res) => {
   try {
-    const unit = await Unit.findById(req.params.id).populate(
-      "positions unit rewards annualCompetitions"
-    );
+    // const unit = await Unit.findById(req.params.id).populate({
+    //   path: "staffs",
+    //   populate: [
+    //     {
+    //       path: "positions",
+    //       model: "Position",
+    //     },
+    //   ],
+    // });
+    const unit = await Unit.findById(req.params.id).populate("staffs");
     if (!unit)
       return res.status(404).json({ message: "Unit member not found" });
     res.json(unit);
@@ -41,13 +53,13 @@ exports.getUnitById = async (req, res) => {
 
 // Update a unit member by ID
 exports.updateUnit = async (req, res) => {
-  const { name, staff } = req.body;
+  const { name, staffs } = req.body;
   try {
     const unit = await Unit.findById(req.params.id);
     if (!unit)
       return res.status(404).json({ message: "Unit member not found" });
     unit.name = name || unit.name;
-    unit.staff = staff || unit.staff;
+    unit.staffs = staffs || unit.staffs;
     await unit.save();
     res.json({ message: "Unit member updated successfully", unit });
   } catch (err) {
