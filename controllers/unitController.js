@@ -1,4 +1,8 @@
 const Unit = require("../models/unitModel");
+const {
+  findCustomWithPopulate,
+  populateOptions,
+} = require("../custom/CustomFinding");
 
 // Create a new unit member
 exports.createUnit = async (req, res) => {
@@ -16,14 +20,11 @@ exports.createUnit = async (req, res) => {
 // Get all unit members
 exports.getUnit = async (req, res) => {
   try {
-    const unitList = await Unit.find().populate("staffs");
-    // const unit = await Unit.find().populate({
-    //   path: "staffs",
-    //   populate: {
-    //     path: "positions",
-    //     model: "Position",
-    //   },
-    // });
+    let option = populateOptions("staffs", "positions", "Position");
+    const unitList = await findCustomWithPopulate({
+      model: Unit,
+      populateOptions: option,
+    });
     res.json(unitList);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -33,16 +34,12 @@ exports.getUnit = async (req, res) => {
 // Get a single unit member by ID
 exports.getUnitById = async (req, res) => {
   try {
-    // const unit = await Unit.findById(req.params.id).populate({
-    //   path: "staffs",
-    //   populate: [
-    //     {
-    //       path: "positions",
-    //       model: "Position",
-    //     },
-    //   ],
-    // });
-    const unit = await Unit.findById(req.params.id).populate("staffs");
+    let option = populateOptions("staffs", "positions", "Position");
+    const unit = await findCustomWithPopulate({
+      model: Unit,
+      id: req.params.id,
+      populateOptions: option,
+    });
     if (!unit)
       return res.status(404).json({ message: "Unit member not found" });
     res.json(unit);
