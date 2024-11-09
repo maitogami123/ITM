@@ -1,11 +1,16 @@
-const Staff = require('../models/staffModel');
+const Staff = require("../models/staffModel");
+const { calculateNextIncrementDate } = require("../utils/salaryIncrement");
+const formatDate = require("../utils/formatDate");
 
 // Create a new staff member
 exports.createStaff = async (req, res) => {
+  req.body.lastIncrementDate = req.body.startDate;
   const staff = new Staff(req.body);
   try {
     const newStaff = await staff.save();
-    res.status(201).json({ message: 'Staff member created successfully', staff: newStaff });
+    res
+      .status(201)
+      .json({ message: "Staff member created successfully", staff: newStaff });
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
@@ -14,7 +19,9 @@ exports.createStaff = async (req, res) => {
 // Get all staff members
 exports.getStaff = async (req, res) => {
   try {
-    const staffList = await Staff.find().populate('positions unit rewards annualCompetitions');
+    const staffList = await Staff.find().populate(
+      "positions unit rewards competitions"
+    );
     res.json(staffList);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -24,8 +31,11 @@ exports.getStaff = async (req, res) => {
 // Get a single staff member by ID
 exports.getStaffById = async (req, res) => {
   try {
-    const staff = await Staff.findById(req.params.id).populate('positions unit rewards annualCompetitions');
-    if (!staff) return res.status(404).json({ message: 'Staff member not found' });
+    const staff = await Staff.findById(req.params.id).populate(
+      "positions unit rewards competitions"
+    );
+    if (!staff)
+      return res.status(404).json({ message: "Staff member not found" });
     res.json(staff);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -48,11 +58,12 @@ exports.updateStaff = async (req, res) => {
     mainSpecialization,
     unit,
     rewards,
-    annualCompetitions,
+    competitions,
   } = req.body;
   try {
     const staff = await Staff.findById(req.params.id);
-    if (!staff) return res.status(404).json({ message: 'Staff member not found' });
+    if (!staff)
+      return res.status(404).json({ message: "Staff member not found" });
 
     staff.mscb = mscb || staff.mscb;
     staff.name = name || staff.name;
@@ -67,10 +78,10 @@ exports.updateStaff = async (req, res) => {
     staff.mainSpecialization = mainSpecialization || staff.mainSpecialization;
     staff.unit = unit || staff.unit;
     staff.rewards = rewards || staff.rewards;
-    staff.annualCompetitions = annualCompetitions || staff.annualCompetitions;
+    staff.competitions = competitions || staff.competitions;
 
     await staff.save();
-    res.json({ message: 'Staff member updated successfully', staff });
+    res.json({ message: "Staff member updated successfully", staff });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -80,24 +91,30 @@ exports.updateStaff = async (req, res) => {
 exports.deleteStaff = async (req, res) => {
   try {
     const staff = await Staff.findByIdAndDelete(req.params.id);
-    if (!staff) return res.status(404).json({ message: 'Staff member not found' });
-    res.json({ message: 'Staff member deleted successfully' });
+    if (!staff)
+      return res.status(404).json({ message: "Staff member not found" });
+    res.json({ message: "Staff member deleted successfully" });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
 
+// List listSalaryIncrements
 exports.listSalaryIncrements = async (req, res) => {
   try {
-    const staffList = await Staff.find().populate('rewards');
+    const staffList = await Staff.find().populate("rewards");
     const salaryIncrements = staffList.map((staff) => {
-      const nextIncrementDate = calculateNextIncrementDate(staff.qualificationCode, staff.lastIncrementDate, staff.rewards);
+      const nextIncrementDate = calculateNextIncrementDate(
+        staff.qualificationCode,
+        staff.lastIncrementDate,
+        staff.rewards
+      );
       return {
         mscb: staff.mscb,
         name: staff.name,
         qualificationCode: staff.qualificationCode,
-        lastIncrementDate: staff.lastIncrementDate,
-        nextIncrementDate,
+        lastIncrementDate: formatDate(staff.lastIncrementDate),
+        nextIncrementDate: formatDate(nextIncrementDate),
       };
     });
     res.json(salaryIncrements);

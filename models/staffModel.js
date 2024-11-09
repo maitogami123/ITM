@@ -19,6 +19,7 @@ const staffSchema = new mongoose.Schema({
   },
   isPermanent: { type: Boolean, required: true },
   startDate: { type: Date, required: true },
+  lastIncrementDate: { type: Date, required: true },
   notes: { type: String },
   mainSpecialization: { type: String, required: true },
   positions: [{ type: mongoose.Schema.Types.ObjectId, ref: "Position" }],
