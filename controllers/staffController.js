@@ -1,6 +1,10 @@
 const Staff = require("../models/staffModel");
 const { calculateNextIncrementDate } = require("../utils/salaryIncrement");
 const formatDate = require("../utils/formatDate");
+const {
+  findCustomWithPopulate,
+  populateOptions,
+} = require("../custom/CustomFinding");
 
 // Create a new staff member
 exports.createStaff = async (req, res) => {
@@ -17,16 +21,18 @@ exports.createStaff = async (req, res) => {
 };
 
 // Get all staff members
-exports.getStaff = async (req, res) => {
-  try {
-    const staffList = await Staff.find().populate(
-      "positions unit rewards competitions"
-    );
-    res.json(staffList);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
+// exports.getStaff = async (req, res) => {
+//   try {
+//     let option = populateOptions("positions unit rewards competitions");
+//     const staffList = await findCustomWithPopulate({
+//       model: Staff,
+//       populateOptions: option,
+//     });
+//     res.json(staffList);
+//   } catch (err) {
+//     res.status(500).json({ message: err.message });
+//   }
+// };
 
 // Get a single staff member by ID
 exports.getStaffById = async (req, res) => {
@@ -118,6 +124,62 @@ exports.listSalaryIncrements = async (req, res) => {
       };
     });
     res.json(salaryIncrements);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+// Get all staff members with search, pagination, and population
+exports.getStaff = async (req, res) => {
+  try {
+    // Extract query parameters
+    const {
+      search,
+      page = 1,
+      limit = 10,
+      sortBy = "createdAt",
+      order = "desc",
+    } = req.query;
+
+    // Build the search filter
+    let filter = {};
+    if (search) {
+      filter = {
+        $or: [
+          { name: { $regex: search, $options: "i" } }, // case-insensitive search for name
+          { email: { $regex: search, $options: "i" } }, // case-insensitive search for email
+        ],
+      };
+    }
+
+    // Pagination and sorting options
+    const options = {
+      skip: (page - 1) * parseInt(limit),
+      limit: parseInt(limit),
+      sort: { [sortBy]: order === "asc" ? 1 : -1 },
+    };
+
+    // Populate options for related fields
+    const populateOption = populateOptions(
+      "positions unit rewards competitions"
+    );
+
+    // Get the staff list with search, pagination, and population using findCustomWithPopulate
+    const staffList = await findCustomWithPopulate({
+      model: Staff.find(filter, null, options),
+      populateOptions: populateOption,
+    });
+
+    // Get total count of documents matching the filter for pagination info
+    const total = await Staff.countDocuments(filter);
+
+    // Send paginated response
+    res.json({
+      total,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      pages: Math.ceil(total / limit),
+      data: staffList,
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

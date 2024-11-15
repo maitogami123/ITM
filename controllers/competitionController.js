@@ -2,6 +2,10 @@ const Competition = require("../models/competitionModel");
 const fs = require("fs");
 const path = require("path");
 const { Parser } = require("json2csv");
+const {
+  findCustomWithPopulate,
+  populateOptions,
+} = require("../custom/CustomFinding");
 
 // Create a new competition
 exports.createCompetition = async (req, res) => {
@@ -108,8 +112,11 @@ exports.removeProjectFromCompetition = async (req, res) => {
 // Export statistics of competitions
 exports.exportCompetitionStatistics = async (req, res) => {
   try {
-    const competitions = await Competition.find().populate("staffs");
-
+    let option = populateOptions("staffs");
+    const competitions = await findCustomWithPopulate({
+      model: Competition,
+      populateOptions: option,
+    });
     // Prepare data for CSV export
     const data = competitions.map((competition) => ({
       year: competition.year,
