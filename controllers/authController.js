@@ -1,12 +1,27 @@
 const User = require("../models/userModel");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
+const generateRandomId = require("../utils/generateRandomId");
+const Staff = require("../models/staffModel");
 
 exports.register = async (req, res) => {
-  const { username, password, role } = req.body;
+  const { username, password } = req.body;
   try {
-    const newUser = new User({ username, password, role });
+    const staff = new Staff({
+      mscb: generateRandomId(),
+      name: "",
+      dateOfBirth: "",
+      phone: "",
+      isPermanent: false,
+      startDate: "",
+      lastIncrementDate: "",
+      mainSpecialization: "",
+    });
+    await staff.save();
+    const newUser = new User({ username, password, staff: staff._id });
     await newUser.save();
+    staff.user = newUser._id;
+    await staff.save();
     res.status(201).json({ message: "User registered successfully" });
   } catch (err) {
     res.status(400).json({ message: err.message });

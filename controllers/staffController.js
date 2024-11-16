@@ -145,8 +145,8 @@ exports.getStaff = async (req, res) => {
     if (search) {
       filter = {
         $or: [
-          { name: { $regex: search, $options: "i" } }, // case-insensitive search for name
-          { email: { $regex: search, $options: "i" } }, // case-insensitive search for email
+          { name: { $regex: `\\b${search}`, $options: "i" } }, // case-insensitive search for name
+          { email: { $regex: `\\b${search}`, $options: "i" } }, // case-insensitive search for email
         ],
       };
     }
