@@ -1,6 +1,6 @@
-const mongoose = require("mongoose");
-const bcrypt = require("bcrypt");
-const UserRole = require("./enum/UserRole"); // Import the enum
+const mongoose = require('mongoose');
+const bcrypt = require('bcrypt');
+const UserRole = require('./enum/UserRole'); // Import the enum
 
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
@@ -14,14 +14,14 @@ const userSchema = new mongoose.Schema({
     enum: Object.values(UserRole), // Use values from UserRole enum
     default: UserRole.LECTURER,
   },
-  staff: { type: mongoose.Schema.Types.ObjectId, ref: "Staff" },
+  staff: { type: mongoose.Schema.Types.ObjectId, ref: 'Staff' },
 });
 
-userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next();
+userSchema.pre('save', async function (next) {
+  if (!this.isModified('password')) return next();
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
   next();
 });
 
-module.exports = mongoose.model("User", userSchema);
+module.exports = mongoose.model('User', userSchema);

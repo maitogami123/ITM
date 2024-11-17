@@ -45,12 +45,14 @@ exports.getUserById = async (req, res) => {
 
 // Update a user by ID
 exports.updateUser = async (req, res) => {
-  const { username, password, role } = req.body;
+  const { username, password, role, description, email } = req.body;
   try {
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     user.username = username || user.username;
+    user.description = description || user.description;
+    user.email = email || user.email;
     if (password) user.password = await bcrypt.hash(password, 10);
     user.role = role || user.role;
 
