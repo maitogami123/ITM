@@ -1,10 +1,10 @@
-const Staff = require("../models/staffModel");
-const { calculateNextIncrementDate } = require("../utils/salaryIncrement");
-const formatDate = require("../utils/formatDate");
+const Staff = require('../models/staffModel');
+const { calculateNextIncrementDate } = require('../utils/salaryIncrement');
+const formatDate = require('../utils/formatDate');
 const {
   findCustomWithPopulate,
   populateOptions,
-} = require("../custom/CustomFinding");
+} = require('../custom/CustomFinding');
 
 // Create a new staff member
 exports.createStaff = async (req, res) => {
@@ -14,7 +14,7 @@ exports.createStaff = async (req, res) => {
     const newStaff = await staff.save();
     res
       .status(201)
-      .json({ message: "Staff member created successfully", staff: newStaff });
+      .json({ message: 'Staff member created successfully', staff: newStaff });
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
@@ -37,11 +37,11 @@ exports.createStaff = async (req, res) => {
 // Get a single staff member by ID
 exports.getStaffById = async (req, res) => {
   try {
-    const staff = await Staff.findById(req.params.id).populate(
-      "positions unit rewards competitions"
-    );
+    const staff = await Staff.findById(req.params.id)
+      .select('-password')
+      .populate('positions unit rewards competitions');
     if (!staff)
-      return res.status(404).json({ message: "Staff member not found" });
+      return res.status(404).json({ message: 'Staff member not found' });
     res.json(staff);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -69,7 +69,7 @@ exports.updateStaff = async (req, res) => {
   try {
     const staff = await Staff.findById(req.params.id);
     if (!staff)
-      return res.status(404).json({ message: "Staff member not found" });
+      return res.status(404).json({ message: 'Staff member not found' });
 
     staff.mscb = mscb || staff.mscb;
     staff.name = name || staff.name;
@@ -87,7 +87,7 @@ exports.updateStaff = async (req, res) => {
     staff.competitions = competitions || staff.competitions;
 
     await staff.save();
-    res.json({ message: "Staff member updated successfully", staff });
+    res.json({ message: 'Staff member updated successfully', staff });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -98,8 +98,8 @@ exports.deleteStaff = async (req, res) => {
   try {
     const staff = await Staff.findByIdAndDelete(req.params.id);
     if (!staff)
-      return res.status(404).json({ message: "Staff member not found" });
-    res.json({ message: "Staff member deleted successfully" });
+      return res.status(404).json({ message: 'Staff member not found' });
+    res.json({ message: 'Staff member deleted successfully' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -108,7 +108,7 @@ exports.deleteStaff = async (req, res) => {
 // List listSalaryIncrements
 exports.listSalaryIncrements = async (req, res) => {
   try {
-    const staffList = await Staff.find().populate("rewards");
+    const staffList = await Staff.find().populate('rewards');
     const salaryIncrements = staffList.map((staff) => {
       const nextIncrementDate = calculateNextIncrementDate(
         staff.qualificationCode,
@@ -136,8 +136,8 @@ exports.getStaff = async (req, res) => {
       search,
       page = 1,
       limit = 10,
-      sortBy = "createdAt",
-      order = "desc",
+      sortBy = 'createdAt',
+      order = 'desc',
     } = req.query;
 
     // Build the search filter
@@ -145,8 +145,8 @@ exports.getStaff = async (req, res) => {
     if (search) {
       filter = {
         $or: [
-          { name: { $regex: `\\b${search}`, $options: "i" } }, // case-insensitive search for name
-          { email: { $regex: `\\b${search}`, $options: "i" } }, // case-insensitive search for email
+          { name: { $regex: `\\b${search}`, $options: 'i' } }, // case-insensitive search for name
+          { email: { $regex: `\\b${search}`, $options: 'i' } }, // case-insensitive search for email
         ],
       };
     }
@@ -155,12 +155,12 @@ exports.getStaff = async (req, res) => {
     const options = {
       skip: (page - 1) * parseInt(limit),
       limit: parseInt(limit),
-      sort: { [sortBy]: order === "asc" ? 1 : -1 },
+      sort: { [sortBy]: order === 'asc' ? 1 : -1 },
     };
 
     // Populate options for related fields
     const populateOption = populateOptions(
-      "positions unit rewards competitions"
+      'positions unit rewards competitions'
     );
 
     // Get the staff list with search, pagination, and population using findCustomWithPopulate
