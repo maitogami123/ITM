@@ -34,6 +34,15 @@ exports.createStaff = async (req, res) => {
 //   }
 // };
 
+exports.getStaffBasicInfo = async (req, res) => {
+  try {
+    const staffs = await Staff.find().select('mscb name');
+    res.json(staffs);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 // Get a single staff member by ID
 exports.getStaffById = async (req, res) => {
   try {

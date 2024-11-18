@@ -6,6 +6,7 @@ const {
   updateStaff,
   deleteStaff,
   listSalaryIncrements,
+  getStaffBasicInfo,
 } = require('../controllers/staffController');
 const authMiddleware = require('../middlewares/authMiddleware');
 const router = express.Router();
@@ -15,6 +16,12 @@ router.post('/', authMiddleware(['superadmin']), createStaff);
 
 // Get all staff members (requires authentication)
 router.get('/', getStaff);
+
+router.get(
+  '/simple',
+  authMiddleware(['superadmin', 'leader']),
+  getStaffBasicInfo
+);
 
 // Get list salary increments (requires authentication)
 router.get(

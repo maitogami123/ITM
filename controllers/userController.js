@@ -1,6 +1,7 @@
 const User = require('../models/userModel');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { findCustomWithPopulate } = require('../custom/CustomFinding');
 
 // Create a new user
 exports.createUser = async (req, res) => {
@@ -19,8 +20,41 @@ exports.createUser = async (req, res) => {
 // Get all users
 exports.getUsers = async (req, res) => {
   try {
-    const users = await User.find().select('-password');
-    res.json(users);
+    const {
+      search,
+      page = 1,
+      limit = 10,
+      sortBy = 'createdAt',
+      order = 'desc',
+    } = req.query;
+
+    let filter = {};
+    if (search) {
+      filter = {
+        $or: [
+          { name: { $regex: `\\b${search}`, $options: 'i' } }, // case-insensitive search for name
+          { email: { $regex: `\\b${search}`, $options: 'i' } }, // case-insensitive search for email
+        ],
+      };
+    }
+
+    const options = {
+      skip: (page - 1) * parseInt(limit),
+      limit: parseInt(limit),
+      sort: { [sortBy]: order === 'asc' ? 1 : -1 },
+    };
+
+    const userList = await findCustomWithPopulate({
+      model: User.find(filter, null, options).select('-password'),
+    });
+    const total = await User.countDocuments(filter);
+    res.json({
+      total,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      pages: Math.ceil(total / limit),
+      data: userList,
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
