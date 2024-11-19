@@ -8,6 +8,7 @@ const {
   addProjectToCompetition,
   removeProjectFromCompetition,
   exportCompetitionStatistics,
+  removeStaffFromCompetition,
 } = require("../controllers/competitionController");
 const authMiddleware = require("../middlewares/authMiddleware");
 const router = express.Router();
@@ -47,6 +48,13 @@ router.delete(
   "/:id/projects/:projectId",
   authMiddleware(["superadmin"]),
   removeProjectFromCompetition
+);
+
+// Remove a staff from a competition (requires superadmin role)
+router.delete(
+  "/:id/staff/:staffId",
+  authMiddleware(["superadmin"]),
+  removeStaffFromCompetition
 );
 
 // Export statistics of competitions

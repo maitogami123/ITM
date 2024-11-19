@@ -1,6 +1,8 @@
 const Competition = require("../models/competitionModel");
+const Staff = require("../models/staffModel");
 const fs = require("fs");
 const path = require("path");
+const mongoose = require("mongoose");
 const { Parser } = require("json2csv");
 const {
   findCustomWithPopulate,
@@ -146,6 +148,38 @@ exports.removeProjectFromCompetition = async (req, res) => {
     res.json({ message: "Project removed successfully", competition });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+};
+
+exports.removeStaffFromCompetition = async (req, res) => {
+  try {
+    const { id, staffId } = req.params;
+    const competition = await Competition.findByIdAndUpdate(
+      id,
+      { $pull: { staffs: new mongoose.Types.ObjectId(staffId) } },
+      { new: true } // Return the updated document
+    );
+
+    if (!competition) {
+      return res.status(404).json({ message: "Competition not found" });
+    }
+
+    const staff = await Staff.findById(staffId);
+    if (!staff) {
+      return res.status(404).json({ message: "Staff member not found" });
+    }
+
+    staff.competitions = staff.competitions.filter(
+      (id) => !id.equals(competition._id)
+    );
+    await staff.save();
+
+    return res.json({
+      message: "Staff member removed from competition successfully",
+    });
+  } catch (error) {
+    console.error("Error removing staff from unit:", error);
+    res.status(500).json({ message: error.message });
   }
 };
 
