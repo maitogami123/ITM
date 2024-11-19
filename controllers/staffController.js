@@ -1,4 +1,6 @@
 const Staff = require('../models/staffModel');
+const Unit = require('../models/unitModel');
+const User = require('../models/userModel');
 const { calculateNextIncrementDate } = require('../utils/salaryIncrement');
 const formatDate = require('../utils/formatDate');
 const {
@@ -20,10 +22,23 @@ exports.createStaff = async (req, res) => {
   }
 };
 
-exports.getStaffBasicInfo = async (req, res) => {
+exports.getAvailableStaff = async (req, res) => {
   try {
-    const staffs = await Staff.find().select('mscb name');
-    res.json(staffs);
+    // Find all staff members
+    const allStaff = await Staff.find().select('mscb name');
+
+    // Find staff members already linked to users
+    const linkedStaff = await User.find().select('staff');
+    const linkedStaffIds = linkedStaff.map((user) => {
+      if (user.staff) return user.staff.toString();
+      return;
+    });
+    // Filter out linked staff members
+    const availableStaff = allStaff.filter(
+      (staff) => !linkedStaffIds.includes(staff._id.toString())
+    );
+
+    res.json(availableStaff);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -82,6 +97,24 @@ exports.updateStaff = async (req, res) => {
     staff.competitions = competitions || staff.competitions;
 
     await staff.save();
+    res.json({ message: 'Staff member updated successfully', staff });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.updateStaffUnit = async (req, res) => {
+  try {
+    const staff = await Staff.findById(req.params.staffId);
+    if (!staff)
+      return res.status(404).json({ message: 'Staff member not found' });
+    staff.unit = req.params.unitId || staff.unit;
+    await staff.save();
+
+    const unit = await Unit.findById(req.params.unitId);
+    unit.staffs.push(staff);
+    await unit.save();
+
     res.json({ message: 'Staff member updated successfully', staff });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -175,6 +208,18 @@ exports.getStaff = async (req, res) => {
       pages: Math.ceil(total / limit),
       data: staffList,
     });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getStaffUnitLess = async (req, res) => {
+  try {
+    const staffWithoutUnit = await Staff.find({ unit: null }).select(
+      'name mscb'
+    );
+    console.log(staffWithoutUnit);
+    res.status(200).json(staffWithoutUnit);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

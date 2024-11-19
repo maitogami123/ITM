@@ -6,7 +6,9 @@ const {
   updateStaff,
   deleteStaff,
   listSalaryIncrements,
-  getStaffBasicInfo,
+  getAvailableStaff,
+  getStaffUnitLess,
+  updateStaffUnit,
 } = require('../controllers/staffController');
 const authMiddleware = require('../middlewares/authMiddleware');
 const router = express.Router();
@@ -18,9 +20,15 @@ router.post('/', authMiddleware(['superadmin']), createStaff);
 router.get('/', getStaff);
 
 router.get(
-  '/simple',
+  '/available',
   authMiddleware(['superadmin', 'leader']),
-  getStaffBasicInfo
+  getAvailableStaff
+);
+
+router.get(
+  '/unitless',
+  authMiddleware(['superadmin', 'leader']),
+  getStaffUnitLess
 );
 
 // Get list salary increments (requires authentication)
@@ -35,6 +43,12 @@ router.get('/:id', getStaffById);
 
 // Update a staff member by ID (requires superadmin role)
 router.put('/:id', authMiddleware(['superadmin']), updateStaff);
+
+router.patch(
+  '/:staffId/unit/:unitId',
+  authMiddleware(['superadmin']),
+  updateStaffUnit
+);
 
 // Delete a staff member by ID (requires superadmin role)
 router.delete('/:id', authMiddleware(['superadmin']), deleteStaff);

@@ -5,6 +5,7 @@ const {
   getUserById,
   updateUser,
   deleteUser,
+  updateUserUnit,
 } = require('../controllers/userController');
 const authMiddleware = require('../middlewares/authMiddleware');
 const router = express.Router();
@@ -24,6 +25,7 @@ router.get(
 
 // Update a user by ID (requires superadmin role)
 router.patch('/:id', authMiddleware(['superadmin']), updateUser);
+
 router.patch(
   '/:id/basic',
   authMiddleware(['superadmin', 'leader', 'lecturer']),

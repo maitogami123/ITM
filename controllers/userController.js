@@ -1,13 +1,16 @@
 const User = require('../models/userModel');
+const Staff = require('../models/staffModel');
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 const { findCustomWithPopulate } = require('../custom/CustomFinding');
 
 // Create a new user
 exports.createUser = async (req, res) => {
-  const { username, password, role } = req.body;
+  let { username, password, role, email, staff } = req.body;
   try {
-    const newUser = new User({ username, password, role });
+    if (staff) {
+      staff = await Staff.findById(staff);
+    }
+    const newUser = new User({ username, password, role, email, staff });
     await newUser.save();
     res
       .status(201)
@@ -79,14 +82,17 @@ exports.getUserById = async (req, res) => {
 
 // Update a user by ID
 exports.updateUser = async (req, res) => {
-  const { username, password, role, description, email } = req.body;
+  let { username, password, role, description, email, staff } = req.body;
   try {
+    if (staff) {
+      staff = await Staff.findById(staff);
+    }
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     user.username = username || user.username;
-    user.description = description || user.description;
     user.email = email || user.email;
+    user.staff = staff || user.staff;
     if (password) user.password = await bcrypt.hash(password, 10);
     user.role = role || user.role;
 

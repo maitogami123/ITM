@@ -14,7 +14,8 @@ const userSchema = new mongoose.Schema({
     enum: Object.values(UserRole), // Use values from UserRole enum
     default: UserRole.LECTURER,
   },
-  staff: { type: mongoose.Schema.Types.ObjectId, ref: 'Staff' },
+  staff: { type: mongoose.Schema.Types.ObjectId, ref: 'Staff', default: null },
+  deleted: { type: Boolean, default: false },
 });
 
 userSchema.pre('save', async function (next) {
