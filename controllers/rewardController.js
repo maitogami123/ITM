@@ -1,3 +1,7 @@
+const {
+  populateOptions,
+  findCustomWithPopulate,
+} = require("../custom/CustomFinding");
 const Reward = require("../models/rewardModel");
 
 // Create a new reward
@@ -5,7 +9,9 @@ exports.createReward = async (req, res) => {
   const reward = new Reward(req.body);
   try {
     const newReward = await reward.save();
-    res.status(201).json({ message: "Reward created successfully", reward: newReward });
+    res
+      .status(201)
+      .json({ message: "Reward created successfully", reward: newReward });
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
@@ -14,8 +20,51 @@ exports.createReward = async (req, res) => {
 // Get all rewards
 exports.getRewards = async (req, res) => {
   try {
-    const rewards = await Reward.find().populate("staff");
-    res.json(rewards);
+    const {
+      search,
+      page = 1,
+      limit = 10,
+      sortBy = "createdAt",
+      order = "desc",
+    } = req.query;
+
+    // Build the search filter
+    let filter = {};
+    if (search) {
+      filter = {
+        $or: [
+          { title: { $regex: `\\b${search}`, $options: "i" } }, // case-insensitive search for name
+          // { date: { $regex: `\\b${search}`, $options: 'i' } }, // case-insensitive search for email
+        ],
+      };
+    }
+
+    // Pagination and sorting options
+    const options = {
+      skip: (page - 1) * parseInt(limit),
+      limit: parseInt(limit),
+      sort: { [sortBy]: order === "asc" ? 1 : -1 },
+    };
+
+    // Populate options for related fields
+    const populateOption = populateOptions("staff competition");
+
+    // Get the staff list with search, pagination, and population using findCustomWithPopulate
+    const rewards = await findCustomWithPopulate({
+      model: Reward.find(filter, null, options),
+      populateOptions: populateOption,
+    });
+
+    // Get total count of documents matching the filter for pagination info
+    const total = await Reward.countDocuments(rewards);
+
+    res.json({
+      total,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      pages: Math.ceil(total / limit),
+      data: rewards,
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

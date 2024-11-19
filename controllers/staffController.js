@@ -20,20 +20,6 @@ exports.createStaff = async (req, res) => {
   }
 };
 
-// Get all staff members
-// exports.getStaff = async (req, res) => {
-//   try {
-//     let option = populateOptions("positions unit rewards competitions");
-//     const staffList = await findCustomWithPopulate({
-//       model: Staff,
-//       populateOptions: option,
-//     });
-//     res.json(staffList);
-//   } catch (err) {
-//     res.status(500).json({ message: err.message });
-//   }
-// };
-
 exports.getStaffBasicInfo = async (req, res) => {
   try {
     const staffs = await Staff.find().select('mscb name');
