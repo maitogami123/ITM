@@ -7,7 +7,7 @@ const mongoose = require('mongoose');
 const {
   findCustomWithPopulate,
   populateOptions,
-} = require('../custom/CustomFinding');
+} = require("../custom/CustomFinding");
 
 // Create a new staff member
 exports.createStaff = async (req, res) => {
@@ -22,7 +22,7 @@ exports.createStaff = async (req, res) => {
 
     res
       .status(201)
-      .json({ message: 'Staff member created successfully', staff: newStaff });
+      .json({ message: "Staff member created successfully", staff: newStaff });
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
@@ -31,10 +31,10 @@ exports.createStaff = async (req, res) => {
 exports.getAvailableStaff = async (req, res) => {
   try {
     // Find all staff members
-    const allStaff = await Staff.find().select('mscb name');
+    const allStaff = await Staff.find().select("mscb name");
 
     // Find staff members already linked to users
-    const linkedStaff = await User.find().select('staff');
+    const linkedStaff = await User.find().select("staff");
     const linkedStaffIds = linkedStaff.map((user) => {
       if (user.staff) return user.staff.toString();
       return;
@@ -54,10 +54,10 @@ exports.getAvailableStaff = async (req, res) => {
 exports.getStaffById = async (req, res) => {
   try {
     const staff = await Staff.findById(req.params.id)
-      .select('-password')
-      .populate('positions unit rewards competitions');
+      .select("-password")
+      .populate("positions unit rewards competitions");
     if (!staff)
-      return res.status(404).json({ message: 'Staff member not found' });
+      return res.status(404).json({ message: "Staff member not found" });
     res.json(staff);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -85,7 +85,7 @@ exports.updateStaff = async (req, res) => {
   try {
     const staff = await Staff.findById(req.params.id);
     if (!staff)
-      return res.status(404).json({ message: 'Staff member not found' });
+      return res.status(404).json({ message: "Staff member not found" });
 
     staff.mscb = mscb || staff.mscb;
     staff.name = name || staff.name;
@@ -113,7 +113,7 @@ exports.updateStaff = async (req, res) => {
     staff.competitions = competitions || staff.competitions;
 
     await staff.save();
-    res.json({ message: 'Staff member updated successfully', staff });
+    res.json({ message: "Staff member updated successfully", staff });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -123,7 +123,7 @@ exports.updateStaffUnit = async (req, res) => {
   try {
     const staff = await Staff.findById(req.params.staffId);
     if (!staff)
-      return res.status(404).json({ message: 'Staff member not found' });
+      return res.status(404).json({ message: "Staff member not found" });
     staff.unit = req.params.unitId || staff.unit;
     await staff.save();
 
@@ -131,7 +131,7 @@ exports.updateStaffUnit = async (req, res) => {
     unit.staffs.push(staff);
     await unit.save();
 
-    res.json({ message: 'Staff member updated successfully', staff });
+    res.json({ message: "Staff member updated successfully", staff });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -145,8 +145,8 @@ exports.deleteStaff = async (req, res) => {
     unit.staffs = unit.staffs.filter((staff) => staff._id !== staff._id);
     await unit.save();
     if (!staff)
-      return res.status(404).json({ message: 'Staff member not found' });
-    res.json({ message: 'Staff member deleted successfully' });
+      return res.status(404).json({ message: "Staff member not found" });
+    res.json({ message: "Staff member deleted successfully" });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -155,7 +155,7 @@ exports.deleteStaff = async (req, res) => {
 // List listSalaryIncrements
 exports.listSalaryIncrements = async (req, res) => {
   try {
-    const staffList = await Staff.find().populate('rewards');
+    const staffList = await Staff.find().populate("rewards");
     const salaryIncrements = staffList.map((staff) => {
       const nextIncrementDate = calculateNextIncrementDate(
         staff.qualificationCode,
@@ -183,8 +183,8 @@ exports.getStaff = async (req, res) => {
       search,
       page = 1,
       limit = 10,
-      sortBy = 'createdAt',
-      order = 'desc',
+      sortBy = "createdAt",
+      order = "desc",
     } = req.query;
 
     // Build the search filter
@@ -192,8 +192,8 @@ exports.getStaff = async (req, res) => {
     if (search) {
       filter = {
         $or: [
-          { name: { $regex: `\\b${search}`, $options: 'i' } }, // case-insensitive search for name
-          { email: { $regex: `\\b${search}`, $options: 'i' } }, // case-insensitive search for email
+          { name: { $regex: `\\b${search}`, $options: "i" } }, // case-insensitive search for name
+          { email: { $regex: `\\b${search}`, $options: "i" } }, // case-insensitive search for email
         ],
       };
     }
@@ -202,12 +202,12 @@ exports.getStaff = async (req, res) => {
     const options = {
       skip: (page - 1) * parseInt(limit),
       limit: parseInt(limit),
-      sort: { [sortBy]: order === 'asc' ? 1 : -1 },
+      sort: { [sortBy]: order === "asc" ? 1 : -1 },
     };
 
     // Populate options for related fields
     const populateOption = populateOptions(
-      'positions unit rewards competitions'
+      "positions unit rewards competitions"
     );
 
     // Get the staff list with search, pagination, and population using findCustomWithPopulate
@@ -234,12 +234,25 @@ exports.getStaff = async (req, res) => {
 
 exports.getStaffUnitLess = async (req, res) => {
   try {
+    // Lấy danh sách nhân viên chưa có đơn vị
     const staffWithoutUnit = await Staff.find({ unit: null }).select(
-      'name mscb'
+      "name mscb"
     );
-    console.log(staffWithoutUnit);
+
+    if (!staffWithoutUnit.length) {
+      // Nếu không có kết quả, trả về thông báo
+      return res
+        .status(404)
+        .json({ message: "No staff members without unit found" });
+    }
+
+    // Trả về danh sách
     res.status(200).json(staffWithoutUnit);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    // Log lỗi chi tiết để debug nếu cần
+    console.error("Error fetching staff without unit:", err.message);
+    res
+      .status(500)
+      .json({ message: "An error occurred while fetching staff without unit" });
   }
 };

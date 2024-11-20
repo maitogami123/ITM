@@ -152,39 +152,116 @@ exports.removeProjectFromCompetition = async (req, res) => {
 };
 
 exports.removeStaffFromCompetition = async (req, res) => {
+  const { id: competitionId, staffId } = req.params;
   try {
-    const { id, staffId } = req.params;
-    const competition = await Competition.findByIdAndUpdate(
-      id,
-      { $pull: { staffs: new mongoose.Types.ObjectId(staffId) } },
-      { new: true } // Return the updated document
+    const competition = await Competition.findById(competitionId);
+    if (!competition) {
+      return res.status(404).json({ message: "Competition not found" });
+    }
+
+    if (!competition.staffs.includes(staffId)) {
+      return res
+        .status(404)
+        .json({ message: "Staff not found in this competition" });
+    }
+
+    competition.staffs = competition.staffs.filter(
+      (id) => id.toString() !== staffId
     );
+    await competition.save();
+
+    // Tìm Staff và xóa Competition khỏi danh sách competitions
+    const staff = await Staff.findById(staffId);
+    if (staff) {
+      staff.competitions = staff.competitions.filter(
+        (compId) => compId.toString() !== competitionId
+      );
+      await staff.save();
+    }
+
+    return res.json({
+      message: "Staff removed from competition successfully",
+      competition,
+    });
+  } catch (error) {
+    console.error("Error removing staff from unit:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.addStaffToCompetition = async (req, res) => {
+  const { id: competitionId, staffId } = req.params;
+
+  try {
+    // Tìm Competition
+    const competition = await Competition.findById(competitionId);
+    if (!competition) {
+      return res.status(404).json({ message: "Competition not found" });
+    }
+
+    // Kiểm tra xem Staff đã có trong Competition chưa
+    if (competition.staffs.includes(staffId)) {
+      return res
+        .status(400)
+        .json({ message: "Staff already added to this competition" });
+    }
+
+    // Thêm Staff vào danh sách Staffs của Competition
+    competition.staffs.push(staffId);
+    await competition.save();
+
+    // Tìm Staff và cập nhật danh sách Competitions
+    const staff = await Staff.findById(staffId);
+    if (staff) {
+      if (!staff.competitions.includes(competitionId)) {
+        staff.competitions.push(competitionId);
+        await staff.save();
+      }
+    }
+
+    // Phản hồi JSON
+    res.json({
+      message: "Staff added to competition successfully",
+      competition,
+    });
+  } catch (error) {
+    console.error("Error adding staff to competition:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getCompetitionStaffLess = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Tìm cuộc thi dựa trên competitionId
+    const competition = await Competition.findById(id).select("staffs");
 
     if (!competition) {
       return res.status(404).json({ message: "Competition not found" });
     }
 
-    const staff = await Staff.findById(staffId);
-    if (!staff) {
-      return res.status(404).json({ message: "Staff member not found" });
+    // Lấy danh sách ID của các nhân viên đã tham gia cuộc thi
+    const staffInCompetition = competition.staffs || [];
+
+    // Tìm tất cả nhân viên chưa có trong cuộc thi
+    const staffNotInCompetition = await Staff.find({
+      _id: { $nin: staffInCompetition }, // Loại trừ các staff đã tham gia
+    }).select("name mscb mainSpecialization");
+
+    if (!staffNotInCompetition.length) {
+      return res
+        .status(404)
+        .json({ message: "No staff members available for this competition" });
     }
 
-    // staff.competitions = staff.competitions.filter(
-    //   (id) => !id.equals(competition._id)
-    // );
-    staff.competitions = staff.competitions.map((id) => {
-      if (!id.equals(competition._id)) {
-        id = null;
-      }
+    // Trả về danh sách nhân viên chưa tham gia cuộc thi
+    res.status(200).json(staffNotInCompetition);
+  } catch (err) {
+    console.error("Error fetching staff not in competition:", err.message);
+    res.status(500).json({
+      message: "An error occurred while fetching staff not in competition",
     });
-    await staff.save();
-
-    return res.json({
-      message: "Staff member removed from competition successfully",
-    });
-  } catch (error) {
-    console.error("Error removing staff from unit:", error);
-    res.status(500).json({ message: error.message });
   }
 };
 

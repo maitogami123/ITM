@@ -15,7 +15,7 @@ const staffSchema = new mongoose.Schema({
   qualificationCode: {
     type: String,
     enum: Object.values(QualificationCode),
-    default: QualificationCode.NULL, // Use values from QualificationCode enum
+    default: QualificationCode.UNKNOWN, // Use values from QualificationCode enum
   },
   isPermanent: { type: Boolean },
   startDate: {
