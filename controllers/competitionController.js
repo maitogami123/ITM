@@ -169,9 +169,14 @@ exports.removeStaffFromCompetition = async (req, res) => {
       return res.status(404).json({ message: "Staff member not found" });
     }
 
-    staff.competitions = staff.competitions.filter(
-      (id) => !id.equals(competition._id)
-    );
+    // staff.competitions = staff.competitions.filter(
+    //   (id) => !id.equals(competition._id)
+    // );
+    staff.competitions = staff.competitions.map((id) => {
+      if (!id.equals(competition._id)) {
+        id = null;
+      }
+    });
     await staff.save();
 
     return res.json({
