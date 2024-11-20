@@ -3,6 +3,7 @@ const Unit = require('../models/unitModel');
 const User = require('../models/userModel');
 const { calculateNextIncrementDate } = require('../utils/salaryIncrement');
 const formatDate = require('../utils/formatDate');
+const mongoose = require('mongoose');
 const {
   findCustomWithPopulate,
   populateOptions,
@@ -14,6 +15,11 @@ exports.createStaff = async (req, res) => {
   const staff = new Staff(req.body);
   try {
     const newStaff = await staff.save();
+
+    const unit = await Unit.findById(req.body.unit);
+    unit.staffs.push(newStaff);
+    await unit.save();
+
     res
       .status(201)
       .json({ message: 'Staff member created successfully', staff: newStaff });
@@ -92,6 +98,16 @@ exports.updateStaff = async (req, res) => {
     staff.notes = notes || staff.notes;
     staff.positions = positions || staff.positions;
     staff.mainSpecialization = mainSpecialization || staff.mainSpecialization;
+    if (unit && staff.unit !== unit) {
+      await Unit.findByIdAndUpdate(
+        staff.unit,
+        { $pull: { staffs: new mongoose.Types.ObjectId(req.params.id) } },
+        { new: true } // Return the updated document
+      );
+      const foundUnit = await Unit.findById(req.params.unitId || unit);
+      foundUnit.staffs.push(staff);
+      await foundUnit.save();
+    }
     staff.unit = unit || staff.unit;
     staff.rewards = rewards || staff.rewards;
     staff.competitions = competitions || staff.competitions;
@@ -125,6 +141,9 @@ exports.updateStaffUnit = async (req, res) => {
 exports.deleteStaff = async (req, res) => {
   try {
     const staff = await Staff.findByIdAndDelete(req.params.id);
+    const unit = await Unit.findById(staff.unit);
+    unit.staffs = unit.staffs.filter((staff) => staff._id !== staff._id);
+    await unit.save();
     if (!staff)
       return res.status(404).json({ message: 'Staff member not found' });
     res.json({ message: 'Staff member deleted successfully' });

@@ -42,7 +42,7 @@ router.get(
 router.get('/:id', getStaffById);
 
 // Update a staff member by ID (requires superadmin role)
-router.put('/:id', authMiddleware(['superadmin']), updateStaff);
+router.patch('/:id', authMiddleware(['superadmin']), updateStaff);
 
 router.patch(
   '/:staffId/unit/:unitId',
