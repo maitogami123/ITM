@@ -11,6 +11,9 @@ const {
   removeStaffFromCompetition,
   addStaffToCompetition,
   getCompetitionStaffLess,
+  getCompetitionRewardLess,
+  addRewardToCompetition,
+  removeRewardFromCompetition,
 } = require("../controllers/competitionController");
 const authMiddleware = require("../middlewares/authMiddleware");
 const router = express.Router();
@@ -36,6 +39,12 @@ router.get(
   "/:id/staffs-not-in",
   authMiddleware(["superadmin", "leader", "lecturer"]),
   getCompetitionStaffLess
+);
+
+router.get(
+  "/:id/rewards-not-in",
+  authMiddleware(["superadmin", "leader", "lecturer"]),
+  getCompetitionRewardLess
 );
 
 // Update a competition by ID (requires superadmin role)
@@ -65,10 +74,23 @@ router.delete(
   removeStaffFromCompetition
 );
 
+// Remove a staff from a competition (requires superadmin role)
+router.delete(
+  "/:id/reward/:rewardId",
+  authMiddleware(["superadmin"]),
+  removeRewardFromCompetition
+);
+
 router.post(
   "/:id/staff/:staffId",
   authMiddleware(["superadmin"]),
   addStaffToCompetition
+);
+
+router.post(
+  "/:id/reward/:rewardId",
+  authMiddleware(["superadmin"]),
+  addRewardToCompetition
 );
 
 // Export statistics of competitions

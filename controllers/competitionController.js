@@ -8,6 +8,7 @@ const {
   findCustomWithPopulate,
   populateOptions,
 } = require("../custom/CustomFinding");
+const Reward = require("../models/rewardModel");
 
 // Create a new competition
 exports.createCompetition = async (req, res) => {
@@ -189,6 +190,52 @@ exports.removeStaffFromCompetition = async (req, res) => {
   }
 };
 
+exports.removeRewardFromCompetition = async (req, res) => {
+  const { id: competitionId, rewardId } = req.params;
+
+  try {
+    // Tìm Competition
+    const competition = await Competition.findById(competitionId);
+    if (!competition) {
+      return res.status(404).json({ message: "Competition not found" });
+    }
+
+    // Kiểm tra xem Reward có nằm trong Competition hay không
+    if (!competition.rewards.includes(rewardId)) {
+      return res.status(400).json({
+        message: "Reward not associated with this competition",
+      });
+    }
+
+    // Xóa Reward khỏi danh sách rewards của Competition
+    competition.rewards = competition.rewards.filter(
+      (id) => id.toString() !== rewardId
+    );
+    await competition.save();
+
+    // Tìm Reward và cập nhật liên kết Competition
+    const reward = await Reward.findById(rewardId);
+    if (reward) {
+      if (
+        reward.competition &&
+        reward.competition.toString() === competitionId
+      ) {
+        reward.competition = null; // Xóa liên kết
+        await reward.save();
+      }
+    }
+
+    // Phản hồi JSON
+    res.json({
+      message: "Reward removed from competition successfully",
+      competition,
+    });
+  } catch (error) {
+    console.error("Error removing reward from competition:", error.message);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 exports.addStaffToCompetition = async (req, res) => {
   const { id: competitionId, staffId } = req.params;
 
@@ -230,6 +277,49 @@ exports.addStaffToCompetition = async (req, res) => {
   }
 };
 
+exports.addRewardToCompetition = async (req, res) => {
+  const { id: competitionId, rewardId } = req.params;
+
+  try {
+    // Tìm Competition
+    const competition = await Competition.findById(competitionId);
+    if (!competition) {
+      return res.status(404).json({ message: "Competition not found" });
+    }
+    // Tìm Reward
+    const reward = await Reward.findById(rewardId);
+    if (!reward) {
+      return res.status(404).json({ message: "Reward not found" });
+    }
+
+    // Kiểm tra nếu Reward đã được liên kết với một Competition
+    if (reward.competition && reward.competition.toString() !== competitionId) {
+      return res.status(400).json({
+        message: "This reward is already linked to another competition",
+      });
+    }
+
+    // Cập nhật Reward với Competition mới
+    reward.competition = competitionId;
+    await reward.save();
+
+    // Thêm Reward vào danh sách rewards của Competition nếu chưa tồn tại
+    if (!competition.rewards.includes(rewardId)) {
+      competition.rewards.push(rewardId);
+      await competition.save();
+    }
+    // Phản hồi JSON
+    res.json({
+      message: "Reward added to competition successfully",
+      competition,
+      reward,
+    });
+  } catch (error) {
+    console.error("Error adding staff to competition:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 exports.getCompetitionStaffLess = async (req, res) => {
   const { id } = req.params;
 
@@ -261,6 +351,45 @@ exports.getCompetitionStaffLess = async (req, res) => {
     console.error("Error fetching staff not in competition:", err.message);
     res.status(500).json({
       message: "An error occurred while fetching staff not in competition",
+    });
+  }
+};
+
+exports.getCompetitionRewardLess = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Tìm cuộc thi dựa trên competitionId
+    const competition = await Competition.findById(id).select("rewards");
+
+    if (!competition) {
+      return res.status(404).json({ message: "Competition not found" });
+    }
+
+    // Lấy danh sách ID của các nhân viên đã tham gia cuộc thi
+    const rewardsInCompetition = competition.rewards || [];
+
+    // Tìm tất cả các rewards chưa liên kết với bất kỳ Competition nào
+    // Hoặc không thuộc Competition này
+    const rewardsNotInCompetition = await Reward.find({
+      $and: [
+        { competition: null }, // Chưa liên kết với bất kỳ Competition nào
+        { competition: { $ne: id } }, // Không thuộc Competition đang xét
+      ],
+    }).select("title date");
+
+    if (!rewardsNotInCompetition.length) {
+      return res
+        .status(404)
+        .json({ message: "No reward members available for this competition" });
+    }
+
+    // Trả về danh sách nhân viên chưa tham gia cuộc thi
+    res.status(200).json(rewardsNotInCompetition);
+  } catch (err) {
+    console.error("Error fetching reward not in competition:", err.message);
+    res.status(500).json({
+      message: "An error occurred while fetching reward not in competition",
     });
   }
 };
