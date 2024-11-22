@@ -4,6 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const mongoose = require("mongoose");
 const { Parser } = require("json2csv");
+const xlsx = require("xlsx");
 const {
   findCustomWithPopulate,
   populateOptions,
@@ -395,37 +396,66 @@ exports.getCompetitionRewardLess = async (req, res) => {
 };
 
 // Export statistics of competitions
+
 exports.exportCompetitionStatistics = async (req, res) => {
   try {
-    let option = populateOptions("staffs");
+    let option = populateOptions("staffs rewards");
     const competitions = await findCustomWithPopulate({
       model: Competition,
       populateOptions: option,
     });
-    // Prepare data for CSV export
+
+    // Chuẩn bị dữ liệu cho file XLSX
     const data = competitions.map((competition) => ({
-      year: competition.year,
-      title: competition.title,
-      description: competition.description,
-      staffs: competition.staffs.map((p) => p.name).join(", "),
+      Year: competition.year,
+      Title: competition.title,
+      Description: competition.description,
+      Staffs: competition.staffs.map((p) => p.name).join(", "),
+      Rewards: competition.rewards.map((p) => p.title).join(", "),
     }));
 
-    // Define fields for CSV
-    const fields = ["year", "title", "description", "staffs"];
-    const json2csvParser = new Parser({ fields });
-    const csv = json2csvParser.parse(data);
+    // Chuyển đổi dữ liệu JSON thành worksheet
+    const worksheet = xlsx.utils.json_to_sheet(data);
 
-    // Write CSV to file
+    // Thêm định dạng cho tiêu đề (header)
+    const range = xlsx.utils.decode_range(worksheet["!ref"]); // Lấy phạm vi của bảng
+    for (let col = range.s.c; col <= range.e.c; col++) {
+      const cellAddress = xlsx.utils.encode_cell({ r: 0, c: col }); // Lấy ô tiêu đề
+      if (worksheet[cellAddress]) {
+        worksheet[cellAddress].s = {
+          font: {
+            bold: true, // In đậm
+            italic: true, // In nghiêng
+            sz: 12, // Kích thước chữ
+            color: { rgb: "FFFFFF" }, // Màu chữ trắng
+          },
+          fill: {
+            fgColor: { rgb: "4F81BD" }, // Màu nền xanh
+          },
+          alignment: {
+            horizontal: "center", // Canh giữa
+            vertical: "center",
+          },
+        };
+        worksheet[cellAddress].v = worksheet[cellAddress].v.toUpperCase(); // In hoa
+      }
+    }
+
+    // Tạo workbook và thêm worksheet
+    const workbook = xlsx.utils.book_new();
+    xlsx.utils.book_append_sheet(workbook, worksheet, "Competition Statistics");
+
+    // Ghi file XLSX ra disk
     const filePath = path.join(
       __dirname,
       "..",
       "exports",
-      "competition_statistics.csv"
+      "competition_statistics.xlsx"
     );
-    fs.writeFileSync(filePath, csv);
+    xlsx.writeFile(workbook, filePath);
 
-    // Send file as response
-    res.download(filePath, "competition_statistics.csv");
+    // Gửi file XLSX về client
+    res.download(filePath, "competition_statistics.xlsx");
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
