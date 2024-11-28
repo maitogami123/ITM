@@ -3,6 +3,7 @@ const Staff = require("../models/staffModel");
 const bcrypt = require("bcryptjs");
 const { findCustomWithPopulate } = require("../custom/CustomFinding");
 const { getStaffSalaryIncrementStatus } = require("./staffController");
+const { calculateNextIncrementDate } = require("../utils/salaryIncrement");
 
 // Create a new user
 exports.createUser = async (req, res) => {
@@ -81,16 +82,13 @@ exports.getUserById = async (req, res) => {
       await staff.save();
     }
 
-    const salaryIncrementStatus = {
-      mscb: staff.mscb,
-      name: staff.name,
-      qualificationCode: staff.qualificationCode,
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    res.json({
+      ...user._doc,
       lastIncrementDate: new Date(staff.lastIncrementDate).toLocaleDateString().split("T")[0],
       nextIncrementDate: new Date(nextIncrementDate).toLocaleDateString().split("T")[0],
-    };
-    if (!user) return res.status(404).json({ message: "User not found" });
-    // res.json({ ...user });
-    res.json(user);
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -109,6 +107,11 @@ exports.updateUser = async (req, res) => {
     user.username = username || user.username;
     user.email = email || user.email;
     user.staff = staff || user.staff;
+
+    const foundStaff = await Staff.findById(user.staff);
+    foundStaff.user = user;
+    await foundStaff.save();
+
     if (password) user.password = await bcrypt.hash(password, 10);
     user.role = role || user.role;
 
