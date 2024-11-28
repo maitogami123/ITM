@@ -1,8 +1,9 @@
 const QualificationCode = {
-  BSC: 'BSc',
-  MSC: 'MSc',
-  PHD: 'PhD',
-  UNKNOWN: 'unknown',
+  BSC: "BSc",
+  MSC: "MSc",
+  PHD: "PhD",
+  UNKNOWN: "unknown",
+  NULL: "Null",
 };
 
 module.exports = QualificationCode;

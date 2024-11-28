@@ -1,7 +1,8 @@
-const User = require('../models/userModel');
-const Staff = require('../models/staffModel');
-const bcrypt = require('bcryptjs');
-const { findCustomWithPopulate } = require('../custom/CustomFinding');
+const User = require("../models/userModel");
+const Staff = require("../models/staffModel");
+const bcrypt = require("bcryptjs");
+const { findCustomWithPopulate } = require("../custom/CustomFinding");
+const { getStaffSalaryIncrementStatus } = require("./staffController");
 
 // Create a new user
 exports.createUser = async (req, res) => {
@@ -12,9 +13,7 @@ exports.createUser = async (req, res) => {
     }
     const newUser = new User({ username, password, role, email, staff });
     await newUser.save();
-    res
-      .status(201)
-      .json({ message: 'User created successfully', user: newUser });
+    res.status(201).json({ message: "User created successfully", user: newUser });
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
@@ -23,20 +22,14 @@ exports.createUser = async (req, res) => {
 // Get all users
 exports.getUsers = async (req, res) => {
   try {
-    const {
-      search,
-      page = 1,
-      limit = 10,
-      sortBy = 'createdAt',
-      order = 'desc',
-    } = req.query;
+    const { search, page = 1, limit = 10, sortBy = "createdAt", order = "desc" } = req.query;
 
     let filter = {};
     if (search) {
       filter = {
         $or: [
-          { name: { $regex: `\\b${search}`, $options: 'i' } }, // case-insensitive search for name
-          { email: { $regex: `\\b${search}`, $options: 'i' } }, // case-insensitive search for email
+          { name: { $regex: `\\b${search}`, $options: "i" } }, // case-insensitive search for name
+          { email: { $regex: `\\b${search}`, $options: "i" } }, // case-insensitive search for email
         ],
       };
     }
@@ -44,11 +37,11 @@ exports.getUsers = async (req, res) => {
     const options = {
       skip: (page - 1) * parseInt(limit),
       limit: parseInt(limit),
-      sort: { [sortBy]: order === 'asc' ? 1 : -1 },
+      sort: { [sortBy]: order === "asc" ? 1 : -1 },
     };
 
     const userList = await findCustomWithPopulate({
-      model: User.find(filter, null, options).select('-password'),
+      model: User.find(filter, null, options).select("-password"),
     });
     const total = await User.countDocuments(filter);
     res.json({
@@ -67,13 +60,36 @@ exports.getUsers = async (req, res) => {
 exports.getUserById = async (req, res) => {
   try {
     const user = await User.findById(req.params.id)
-      .select('-password')
-      .populate('staff')
+      .select("-password")
+      .populate("staff")
       .populate({
-        path: 'staff',
-        populate: { path: 'competitions rewards positions unit' },
+        path: "staff",
+        populate: { path: "competitions rewards positions unit" },
       });
-    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const staffId = user.staff._id; // Assuming the ID is passed as a URL parameter
+    const staff = await Staff.findById(staffId).populate("rewards");
+
+    if (!staff) {
+      return res.status(404).json({ message: "Staff member not found" });
+    }
+
+    const nextIncrementDate = calculateNextIncrementDate(staff.qualificationCode, staff.lastIncrementDate, staff.rewards);
+
+    if (!staff.lastIncrementDate) {
+      staff.lastIncrementDate = new Date().toLocaleDateString().split("T")[0];
+      await staff.save();
+    }
+
+    const salaryIncrementStatus = {
+      mscb: staff.mscb,
+      name: staff.name,
+      qualificationCode: staff.qualificationCode,
+      lastIncrementDate: new Date(staff.lastIncrementDate).toLocaleDateString().split("T")[0],
+      nextIncrementDate: new Date(nextIncrementDate).toLocaleDateString().split("T")[0],
+    };
+    if (!user) return res.status(404).json({ message: "User not found" });
+    // res.json({ ...user });
     res.json(user);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -88,7 +104,7 @@ exports.updateUser = async (req, res) => {
       staff = await Staff.findById(staff);
     }
     const user = await User.findById(req.params.id);
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!user) return res.status(404).json({ message: "User not found" });
 
     user.username = username || user.username;
     user.email = email || user.email;
@@ -97,7 +113,7 @@ exports.updateUser = async (req, res) => {
     user.role = role || user.role;
 
     await user.save();
-    res.json({ message: 'User updated successfully', user });
+    res.json({ message: "User updated successfully", user });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -107,8 +123,8 @@ exports.updateUser = async (req, res) => {
 exports.deleteUser = async (req, res) => {
   try {
     const user = await User.findByIdAndDelete(req.params.id);
-    if (!user) return res.status(404).json({ message: 'User not found' });
-    res.json({ message: 'User deleted successfully' });
+    if (!user) return res.status(404).json({ message: "User not found" });
+    res.json({ message: "User deleted successfully" });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

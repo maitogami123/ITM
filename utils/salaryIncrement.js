@@ -4,7 +4,11 @@ const addMonths = (date, months) => {
   return newDate;
 };
 
-const calculateNextIncrementDate = (qualificationCode, lastIncrementDate, rewards) => {
+const calculateNextIncrementDate = (
+  qualificationCode,
+  lastIncrementDate = new Date(),
+  rewards
+) => {
   const incrementPeriod = 36; // Default 3 years in months
   let adjustment = 0;
 
