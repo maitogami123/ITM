@@ -10,6 +10,7 @@ const {
   getStaffUnitLess,
   updateStaffUnit,
   getStaffSalaryIncrementStatus,
+  exportSalaryIncrementsToExcel,
 } = require("../controllers/staffController");
 const authMiddleware = require("../middlewares/authMiddleware");
 const router = express.Router();
@@ -20,12 +21,24 @@ router.post("/", authMiddleware(["superadmin"]), createStaff);
 // Get all staff members (requires authentication)
 router.get("/", getStaff);
 
-router.get("/available", authMiddleware(["superadmin", "leader"]), getAvailableStaff);
+router.get(
+  "/available",
+  authMiddleware(["superadmin", "leader"]),
+  getAvailableStaff
+);
 
-router.get("/unitless", authMiddleware(["superadmin", "leader"]), getStaffUnitLess);
+router.get(
+  "/unitless",
+  authMiddleware(["superadmin", "leader"]),
+  getStaffUnitLess
+);
 
 // Get list salary increments (requires authentication)
-router.get("/increments", authMiddleware(["superadmin", "leader"]), listSalaryIncrements);
+router.get(
+  "/increments",
+  authMiddleware(["superadmin", "leader"]),
+  listSalaryIncrements
+);
 
 // Get a single staff member by ID (requires authentication)
 router.get("/:id", getStaffById);
@@ -33,9 +46,19 @@ router.get("/:id", getStaffById);
 // Update a staff member by ID (requires superadmin role)
 router.patch("/:id", authMiddleware(["superadmin"]), updateStaff);
 
-router.patch("/:staffId/unit/:unitId", authMiddleware(["superadmin"]), updateStaffUnit);
+router.patch(
+  "/:staffId/unit/:unitId",
+  authMiddleware(["superadmin"]),
+  updateStaffUnit
+);
 
 router.get("/:id/salaryIncrementStatus", getStaffSalaryIncrementStatus);
+
+router.get(
+  "/export/salary",
+  authMiddleware(["superadmin", "leader", "lecturer"]),
+  exportSalaryIncrementsToExcel
+);
 
 // Delete a staff member by ID (requires superadmin role)
 router.delete("/:id", authMiddleware(["superadmin"]), deleteStaff);

@@ -50,7 +50,10 @@ exports.getRewards = async (req, res) => {
     };
 
     // Populate options for related fields
-    const populateOption = populateOptions("staff competition");
+    const populateOption = [
+      populateOptions("staff"), // Lấy toàn bộ thông tin từ staff
+      populateOptions("competition"), // Lấy toàn bộ thông tin từ competition
+    ];
 
     // Get the staff list with search, pagination, and population using findCustomWithPopulate
     const rewards = await findCustomWithPopulate({
