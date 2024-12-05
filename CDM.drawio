@@ -1,0 +1,43 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36" version="25.0.1">
+  <diagram name="ERD" id="94JpCtaKanWGOUlhqCrI">
+    <mxGraphModel dx="1434" dy="741" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="4ln419wwOEbpugGRHM24-29" value="User&#xa;------------------&#xa;userId&#xa;username&#xa;email&#xa;password&#xa;role" style="align=left;strokeColor=none;fillColor=#ffffff;spacingLeft=4;fontSize=12;verticalAlign=top;resizable=0;rotatable=0;part=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="70" width="160" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="4ln419wwOEbpugGRHM24-30" value="Staff&#xa;------------------&#xa;staffId&#xa;mscb&#xa;name&#xa;gender&#xa;dateOfBirth&#xa;phone&#xa;isPermanent&#xa;startDate&#xa;lastIncrementDate&#xa;notes" style="align=left;strokeColor=none;fillColor=#ffffff;spacingLeft=4;fontSize=12;verticalAlign=top;resizable=0;rotatable=0;part=1;" vertex="1" parent="1">
+          <mxGeometry x="280" y="40" width="160" height="190" as="geometry" />
+        </mxCell>
+        <mxCell id="4ln419wwOEbpugGRHM24-31" value="Unit&#xa;------------------&#xa;unitId&#xa;name" style="align=left;strokeColor=none;fillColor=#ffffff;spacingLeft=4;fontSize=12;verticalAlign=top;resizable=0;rotatable=0;part=1;" vertex="1" parent="1">
+          <mxGeometry x="560" y="40" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="4ln419wwOEbpugGRHM24-32" value="Position&#xa;------------------&#xa;positionId&#xa;title&#xa;staffId" style="align=left;strokeColor=none;fillColor=#ffffff;spacingLeft=4;fontSize=12;verticalAlign=top;resizable=0;rotatable=0;part=1;" vertex="1" parent="1">
+          <mxGeometry x="280" y="320" width="160" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="4ln419wwOEbpugGRHM24-33" value="Reward&#xa;------------------&#xa;rewardId&#xa;title&#xa;date&#xa;staffId&#xa;competitionId" style="align=left;strokeColor=none;fillColor=#ffffff;spacingLeft=4;fontSize=12;verticalAlign=top;resizable=0;rotatable=0;part=1;" vertex="1" parent="1">
+          <mxGeometry x="560" y="180" width="160" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="4ln419wwOEbpugGRHM24-34" value="Competition&#xa;------------------&#xa;competitionId&#xa;title&#xa;year&#xa;description" style="align=left;strokeColor=none;fillColor=#ffffff;spacingLeft=4;fontSize=12;verticalAlign=top;resizable=0;rotatable=0;part=1;" vertex="1" parent="1">
+          <mxGeometry x="570" y="380" width="160" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="4ln419wwOEbpugGRHM24-35" value="" style="edgeStyle=entityRelationEdgeStyle;fontSize=12;html=1;endArrow=ERoneToMany;startArrow=ERone;rounded=0;" edge="1" parent="1" source="4ln419wwOEbpugGRHM24-29" target="4ln419wwOEbpugGRHM24-30">
+          <mxGeometry width="100" height="100" relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="4ln419wwOEbpugGRHM24-36" value="" style="edgeStyle=entityRelationEdgeStyle;fontSize=12;html=1;endArrow=ERoneToMany;startArrow=ERone;rounded=0;" edge="1" parent="1" source="4ln419wwOEbpugGRHM24-31" target="4ln419wwOEbpugGRHM24-30">
+          <mxGeometry width="100" height="100" relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="4ln419wwOEbpugGRHM24-37" value="" style="edgeStyle=entityRelationEdgeStyle;fontSize=12;html=1;endArrow=ERoneToMany;startArrow=ERone;rounded=0;" edge="1" parent="1" source="4ln419wwOEbpugGRHM24-30" target="4ln419wwOEbpugGRHM24-32">
+          <mxGeometry width="100" height="100" relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="4ln419wwOEbpugGRHM24-38" value="" style="edgeStyle=entityRelationEdgeStyle;fontSize=12;html=1;endArrow=ERoneToMany;startArrow=ERone;rounded=0;" edge="1" parent="1" source="4ln419wwOEbpugGRHM24-30" target="4ln419wwOEbpugGRHM24-33">
+          <mxGeometry width="100" height="100" relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="4ln419wwOEbpugGRHM24-39" value="" style="edgeStyle=entityRelationEdgeStyle;fontSize=12;html=1;endArrow=ERoneToMany;startArrow=ERone;rounded=0;" edge="1" parent="1" source="4ln419wwOEbpugGRHM24-34" target="4ln419wwOEbpugGRHM24-33">
+          <mxGeometry width="100" height="100" relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
