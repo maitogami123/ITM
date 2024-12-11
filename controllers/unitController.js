@@ -10,7 +10,7 @@ const {
 exports.createUnit = async (req, res) => {
   const unit = new Unit(req.body);
   try {
-    const existingUnit = await Unit.findOne({ name });
+    const existingUnit = await Unit.findOne({ name: unit.name });
     if (existingUnit) {
       return res
         .status(400)

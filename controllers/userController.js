@@ -68,27 +68,22 @@ exports.getUserById = async (req, res) => {
         populate: { path: "competitions rewards positions unit" },
       });
 
-    const staffId = user.staff._id; // Assuming the ID is passed as a URL parameter
-    const staff = await Staff.findById(staffId).populate("rewards");
-
-    if (!staff) {
-      return res.status(404).json({ message: "Staff member not found" });
+      if (!user) return res.status(404).json({ message: "User not found" });
+      if (user.staff && user.staff._id) {
+      const staffId = user.staff._id; // Assuming the ID is passed as a URL parameter
+      const staff = await Staff.findById(staffId).populate("rewards");
+      const nextIncrementDate = calculateNextIncrementDate(staff.qualificationCode, staff.lastIncrementDate, staff.rewards);
+      if (!staff.lastIncrementDate) {
+        staff.lastIncrementDate = new Date().toLocaleDateString().split("T")[0];
+        await staff.save();
+      }
+      return res.json({
+        ...user._doc,
+        lastIncrementDate: new Date(staff.lastIncrementDate).toLocaleDateString().split("T")[0],
+        nextIncrementDate: new Date(nextIncrementDate).toLocaleDateString().split("T")[0],
+      });
     }
-
-    const nextIncrementDate = calculateNextIncrementDate(staff.qualificationCode, staff.lastIncrementDate, staff.rewards);
-
-    if (!staff.lastIncrementDate) {
-      staff.lastIncrementDate = new Date().toLocaleDateString().split("T")[0];
-      await staff.save();
-    }
-
-    if (!user) return res.status(404).json({ message: "User not found" });
-
-    res.json({
-      ...user._doc,
-      lastIncrementDate: new Date(staff.lastIncrementDate).toLocaleDateString().split("T")[0],
-      nextIncrementDate: new Date(nextIncrementDate).toLocaleDateString().split("T")[0],
-    });
+    return res.json({...user._doc})
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

@@ -145,7 +145,7 @@ const createSeedData = async () => {
         isPermanent: i % 2 === 0,
         startDate: new Date(`2020-01-0${i}`),
         mainSpecialization: 'Computer Science',
-        notes: 'Staff notes',
+        notes: 'Nhân viên chính thức',
         positions: [savedPositions[i % savedPositions.length]],
         unit: savedUnits[i % savedUnits.length]._id,
       });

@@ -9,12 +9,11 @@ const calculateNextIncrementDate = (
   lastIncrementDate = new Date(),
   rewards
 ) => {
-  const incrementPeriod = 36; // Default 3 years in months
+  const incrementPeriod = 36;
   let adjustment = 0;
 
   // Calculate reduction based on rewards
   rewards.forEach((reward) => {
-    // Adjust 1 month per reward
     adjustment -= 1;
   });
 
