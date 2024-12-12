@@ -73,17 +73,18 @@
 
 // createSeedData();
 
-const mongoose = require('mongoose');
-const User = require('./models/userModel');
-const Staff = require('./models/staffModel');
-const Position = require('./models/posistionModel');
-const Competition = require('./models/competitionModel');
-const Unit = require('./models/unitModel');
-const Reward = require('./models/rewardModel');
-const UserRole = require('./models/enum/UserRole');
-const QualificationCode = require('./models/enum/QualificationCode');
-const Gender = require('./models/enum/Gender');
-const dotenv = require('dotenv');
+const mongoose = require("mongoose");
+const User = require("./models/userModel");
+const Staff = require("./models/staffModel");
+const Position = require("./models/posistionModel");
+const Competition = require("./models/competitionModel");
+const Unit = require("./models/unitModel");
+const Reward = require("./models/rewardModel");
+const UserRole = require("./models/enum/UserRole");
+const QualificationCode = require("./models/enum/QualificationCode");
+const Gender = require("./models/enum/Gender");
+const TeacherGrade = require("./models/enum/TeacherGrade");
+const dotenv = require("dotenv");
 dotenv.config();
 
 mongoose
@@ -92,10 +93,10 @@ mongoose
     useUnifiedTopology: true,
   })
   .then(() => {
-    console.log('Connected to MongoDB');
+    console.log("Connected to MongoDB");
   })
   .catch((err) => {
-    console.error('Error connecting to MongoDB', err);
+    console.error("Error connecting to MongoDB", err);
   });
 
 const createSeedData = async () => {
@@ -109,11 +110,11 @@ const createSeedData = async () => {
     await Unit.deleteMany({});
     // Create positions
     const positions = [
-      'Lecturer',
-      'Assistant',
-      'Professor',
-      'Researcher',
-      'Dean',
+      "Lecturer",
+      "Assistant",
+      "Professor",
+      "Researcher",
+      "Dean",
     ];
     const savedPositions = await Promise.all(
       positions.map(async (title) => {
@@ -122,7 +123,7 @@ const createSeedData = async () => {
       })
     );
 
-    const units = ['Unit 1', 'Unit 2', 'Unit 3'];
+    const units = ["Unit 1", "Unit 2", "Unit 3"];
     const savedUnits = await Promise.all(
       units.map(async (name) => {
         const newUnit = new Unit({ name });
@@ -144,10 +145,11 @@ const createSeedData = async () => {
         qualificationCode: QualificationCode.MASTER,
         isPermanent: i % 2 === 0,
         startDate: new Date(`2020-01-0${i}`),
-        mainSpecialization: 'Computer Science',
-        notes: 'Nhân viên chính thức',
+        mainSpecialization: "Computer Science",
+        notes: "Nhân viên chính thức",
         positions: [savedPositions[i % savedPositions.length]],
         unit: savedUnits[i % savedUnits.length]._id,
+        teacherGrade: TeacherGrade.GRADE_I,
       });
 
       await newStaff.save();
@@ -155,7 +157,7 @@ const createSeedData = async () => {
 
       const newUser = new User({
         username: `user${i}`,
-        password: 'password123',
+        password: "password123",
         email: `user${i}@domain.com`,
         description: `User ${i} description.`,
         role: UserRole.LECTURER,
@@ -176,26 +178,26 @@ const createSeedData = async () => {
     // Create competitions
     const researchProjects = [
       {
-        title: 'Project 1',
-        description: 'Description for project 1',
-        startDate: new Date('2024-01-01'),
-        endDate: new Date('2024-12-31'),
+        title: "Project 1",
+        description: "Description for project 1",
+        startDate: new Date("2024-01-01"),
+        endDate: new Date("2024-12-31"),
       },
       {
-        title: 'Project 2',
-        description: 'Description for project 2',
-        startDate: new Date('2023-01-01'),
-        endDate: new Date('2023-12-31'),
+        title: "Project 2",
+        description: "Description for project 2",
+        startDate: new Date("2023-01-01"),
+        endDate: new Date("2023-12-31"),
       },
       {
-        title: 'Project 3',
-        description: 'Description for project 3',
-        startDate: new Date('2022-01-01'),
-        endDate: new Date('2022-12-31'),
+        title: "Project 3",
+        description: "Description for project 3",
+        startDate: new Date("2022-01-01"),
+        endDate: new Date("2022-12-31"),
       },
     ];
 
-    const competitions = ['Competition 1', 'Competition 2', 'Competition 3'];
+    const competitions = ["Competition 1", "Competition 2", "Competition 3"];
     const savedCompetitions = await Promise.all(
       competitions.map(async (title, index) => {
         const newCompetition = new Competition({
@@ -204,18 +206,18 @@ const createSeedData = async () => {
           description: `Description for ${title}`,
           projects: researchProjects,
           staffs: staffMembers.map((staff) => staff._id),
-          status: index === 2 ? 'ended' : 'ongoing',
+          status: index === 2 ? "ended" : "ongoing",
         });
         return await newCompetition.save();
       })
     );
 
     const endedCompetition = savedCompetitions.find(
-      (c) => c.status === 'ended'
+      (c) => c.status === "ended"
     );
     if (endedCompetition) {
       const newReward = new Reward({
-        title: 'Reward for Competition 3',
+        title: "Reward for Competition 3",
         user: users[Math.floor(Math.random() * users.length)]._id,
         competition: endedCompetition._id,
       });
@@ -224,9 +226,9 @@ const createSeedData = async () => {
       await endedCompetition.save();
     }
 
-    console.log('Seed data created successfully');
+    console.log("Seed data created successfully");
   } catch (err) {
-    console.error('Error creating seed data', err);
+    console.error("Error creating seed data", err);
   } finally {
     mongoose.connection.close();
   }

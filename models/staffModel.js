@@ -1,7 +1,7 @@
-const mongoose = require('mongoose');
-const QualificationCode = require('./enum/QualificationCode'); // Import the enum
-const Gender = require('./enum/Gender');
-const TeacherGrade = require('./enum/TeacherGrade');
+const mongoose = require("mongoose");
+const QualificationCode = require("./enum/QualificationCode"); // Import the enum
+const Gender = require("./enum/Gender");
+const TeacherGrade = require("./enum/TeacherGrade");
 
 const staffSchema = new mongoose.Schema({
   mscb: { type: String, unique: true, required: true },
@@ -16,28 +16,28 @@ const staffSchema = new mongoose.Schema({
   qualificationCode: {
     type: String,
     enum: Object.values(QualificationCode),
-    default: QualificationCode.UNKNOWN, // Use values from QualificationCode enum
+    default: QualificationCode.ThS, // Use values from QualificationCode enum
   },
   isPermanent: { type: Boolean },
   startDate: {
     type: String,
     default: () => {
       const date = new Date(Date.now());
-      return date.toLocaleDateString('en-US', {
-        month: '2-digit',
-        day: '2-digit',
-        year: 'numeric',
+      return date.toLocaleDateString("en-US", {
+        month: "2-digit",
+        day: "2-digit",
+        year: "numeric",
       });
     },
   },
   lastIncrementDate: { type: String },
   notes: { type: String },
   mainSpecialization: { type: String },
-  positions: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Position' }],
-  unit: { type: mongoose.Schema.Types.ObjectId, ref: 'Unit' },
-  rewards: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Reward' }],
-  competitions: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Competition' }],
-  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Tham chiếu tới User
+  positions: [{ type: mongoose.Schema.Types.ObjectId, ref: "Position" }],
+  unit: { type: mongoose.Schema.Types.ObjectId, ref: "Unit" },
+  rewards: [{ type: mongoose.Schema.Types.ObjectId, ref: "Reward" }],
+  competitions: [{ type: mongoose.Schema.Types.ObjectId, ref: "Competition" }],
+  user: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // Tham chiếu tới User
   teacherGrade: {
     type: String,
     enum: Object.values(TeacherGrade),
@@ -90,8 +90,8 @@ const staffSchema = new mongoose.Schema({
 });
 
 // Middleware để tự động cập nhật hệ số lương khi thay đổi bậc lương
-staffSchema.pre('save', function (next) {
-  if (this.isModified('salaryLevel') || this.isModified('teacherGrade')) {
+staffSchema.pre("save", function (next) {
+  if (this.isModified("salaryLevel") || this.isModified("teacherGrade")) {
     let baseCoefficient;
     let incrementValue;
 
@@ -114,11 +114,12 @@ staffSchema.pre('save', function (next) {
     }
 
     // Tính hệ số lương mới dựa trên bậc lương
-    this.salaryCoefficent = baseCoefficient + incrementValue * (this.salaryLevel - 1);
+    this.salaryCoefficent =
+      baseCoefficient + incrementValue * (this.salaryLevel - 1);
     // Cập nhật lương
     this.salary = this.salaryCoefficent * 2340000;
   }
   next();
 });
 
-module.exports = mongoose.model('Staff', staffSchema);
+module.exports = mongoose.model("Staff", staffSchema);
