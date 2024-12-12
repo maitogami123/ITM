@@ -1,30 +1,36 @@
-const Staff = require("../models/staffModel");
-const Unit = require("../models/unitModel");
-const User = require("../models/userModel");
-const { calculateNextIncrementDate } = require("../utils/salaryIncrement");
-const formatDate = require("../utils/formatDate");
-const mongoose = require("mongoose");
-const {
-  findCustomWithPopulate,
-  populateOptions,
-} = require("../custom/CustomFinding");
-const XLSX = require("xlsx");
-const userModel = require("../models/userModel");
+const Staff = require('../models/staffModel');
+const Unit = require('../models/unitModel');
+const User = require('../models/userModel');
+const { calculateNextIncrementDate } = require('../utils/salaryIncrement');
+const formatDate = require('../utils/formatDate');
+const mongoose = require('mongoose');
+const { findCustomWithPopulate, populateOptions } = require('../custom/CustomFinding');
+const XLSX = require('xlsx');
+const userModel = require('../models/userModel');
+const TeacherGrade = require('../models/enum/TeacherGrade');
 
 // Create a new staff member
 exports.createStaff = async (req, res) => {
-  req.body.lastIncrementDate = req.body.startDate;
-  const staff = new Staff(req.body);
   try {
+    // Kiểm tra mã ngạch hợp lệ
+    if (!Object.values(TeacherGrade).includes(req.body.teacherGrade)) {
+      return res.status(400).json({ message: 'Mã ngạch không hợp lệ' });
+    }
+
+    req.body.lastIncrementDate = req.body.startDate;
+    const staff = new Staff(req.body);
     const newStaff = await staff.save();
 
     const unit = await Unit.findById(req.body.unit);
-    unit.staffs.push(newStaff);
-    await unit.save();
+    if (unit) {
+      unit.staffs.push(newStaff);
+      await unit.save();
+    }
 
-    res
-      .status(201)
-      .json({ message: "Staff member created successfully", staff: newStaff });
+    res.status(201).json({
+      message: 'Tạo giảng viên thành công',
+      staff: newStaff,
+    });
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
@@ -33,18 +39,16 @@ exports.createStaff = async (req, res) => {
 exports.getAvailableStaff = async (req, res) => {
   try {
     // Find all staff members
-    const allStaff = await Staff.find().select("mscb name");
+    const allStaff = await Staff.find().select('mscb name');
 
     // Find staff members already linked to users
-    const linkedStaff = await User.find().select("staff");
+    const linkedStaff = await User.find().select('staff');
     const linkedStaffIds = linkedStaff.map((user) => {
       if (user.staff) return user.staff.toString();
       return;
     });
     // Filter out linked staff members
-    const availableStaff = allStaff.filter(
-      (staff) => !linkedStaffIds.includes(staff._id.toString())
-    );
+    const availableStaff = allStaff.filter((staff) => !linkedStaffIds.includes(staff._id.toString()));
 
     res.json(availableStaff);
   } catch (err) {
@@ -56,10 +60,9 @@ exports.getAvailableStaff = async (req, res) => {
 exports.getStaffById = async (req, res) => {
   try {
     const staff = await Staff.findById(req.params.id)
-      .select("-password")
-      .populate("positions unit rewards competitions user");
-    if (!staff)
-      return res.status(404).json({ message: "Staff member not found" });
+      .select('-password')
+      .populate('positions unit rewards competitions user');
+    if (!staff) return res.status(404).json({ message: 'Staff member not found' });
     res.json(staff);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -86,8 +89,7 @@ exports.updateStaff = async (req, res) => {
   } = req.body;
   try {
     const staff = await Staff.findById(req.params.id);
-    if (!staff)
-      return res.status(404).json({ message: "Staff member not found" });
+    if (!staff) return res.status(404).json({ message: 'Staff member not found' });
 
     staff.mscb = mscb || staff.mscb;
     staff.name = name || staff.name;
@@ -115,7 +117,7 @@ exports.updateStaff = async (req, res) => {
     staff.competitions = competitions || staff.competitions;
 
     await staff.save();
-    res.json({ message: "Staff member updated successfully", staff });
+    res.json({ message: 'Staff member updated successfully', staff });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -124,8 +126,7 @@ exports.updateStaff = async (req, res) => {
 exports.updateStaffUnit = async (req, res) => {
   try {
     const staff = await Staff.findById(req.params.staffId);
-    if (!staff)
-      return res.status(404).json({ message: "Staff member not found" });
+    if (!staff) return res.status(404).json({ message: 'Staff member not found' });
     staff.unit = req.params.unitId || staff.unit;
     await staff.save();
 
@@ -133,7 +134,7 @@ exports.updateStaffUnit = async (req, res) => {
     unit.staffs.push(staff);
     await unit.save();
 
-    res.json({ message: "Staff member updated successfully", staff });
+    res.json({ message: 'Staff member updated successfully', staff });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -146,9 +147,8 @@ exports.deleteStaff = async (req, res) => {
     const unit = await Unit.findById(staff.unit);
     unit.staffs = unit.staffs.filter((staff) => staff._id !== staff._id);
     await unit.save();
-    if (!staff)
-      return res.status(404).json({ message: "Staff member not found" });
-    res.json({ message: "Staff member deleted successfully" });
+    if (!staff) return res.status(404).json({ message: 'Staff member not found' });
+    res.json({ message: 'Staff member deleted successfully' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -158,22 +158,16 @@ exports.deleteStaff = async (req, res) => {
 exports.listSalaryIncrements = async (req, res) => {
   try {
     // Extract query parameters
-    const {
-      search,
-      page = 1,
-      limit = 10,
-      sortBy = "createdAt",
-      order = "desc",
-    } = req.query;
+    const { search, page = 1, limit = 10, sortBy = 'createdAt', order = 'desc' } = req.query;
 
     // Build the search filter
     let filter = {};
     if (search) {
       filter = {
         $or: [
-          { name: { $regex: `\\b${search}`, $options: "i" } }, // case-insensitive search for name
-          { mscb: { $regex: `\\b${search}`, $options: "i" } }, // case-insensitive search for email
-          { qualificationCode: { $regex: `\\b${search}`, $options: "i" } }, // case-insensitive search for email
+          { name: { $regex: `\\b${search}`, $options: 'i' } }, // case-insensitive search for name
+          { mscb: { $regex: `\\b${search}`, $options: 'i' } }, // case-insensitive search for email
+          { qualificationCode: { $regex: `\\b${search}`, $options: 'i' } }, // case-insensitive search for email
         ],
       };
     }
@@ -182,11 +176,11 @@ exports.listSalaryIncrements = async (req, res) => {
     const options = {
       skip: (page - 1) * parseInt(limit),
       limit: parseInt(limit),
-      sort: { [sortBy]: order === "asc" ? 1 : -1 },
+      sort: { [sortBy]: order === 'asc' ? 1 : -1 },
     };
 
     // Populate options for related fields
-    const populateOption = populateOptions("rewards");
+    const populateOption = populateOptions('rewards');
 
     // const staffList = await Staff.find().populate("rewards");
     const staffList = await findCustomWithPopulate({
@@ -204,9 +198,7 @@ exports.listSalaryIncrements = async (req, res) => {
           staff.rewards
         );
         if (!staff.lastIncrementDate) {
-          staff.lastIncrementDate = new Date()
-            .toLocaleDateString()
-            .split("T")[0];
+          staff.lastIncrementDate = new Date().toLocaleDateString().split('T')[0];
           await staff.save();
         }
 
@@ -214,12 +206,8 @@ exports.listSalaryIncrements = async (req, res) => {
           mscb: staff.mscb,
           name: staff.name,
           qualificationCode: staff.qualificationCode,
-          lastIncrementDate: new Date(staff.lastIncrementDate)
-            .toLocaleDateString()
-            .split("T")[0],
-          nextIncrementDate: new Date(nextIncrementDate)
-            .toLocaleDateString()
-            .split("T")[0],
+          lastIncrementDate: new Date(staff.lastIncrementDate).toLocaleDateString().split('T')[0],
+          nextIncrementDate: new Date(nextIncrementDate).toLocaleDateString().split('T')[0],
         };
       })
     );
@@ -242,20 +230,16 @@ exports.listSalaryIncrements = async (req, res) => {
 exports.getStaffSalaryIncrementStatus = async (req, res) => {
   try {
     const staffId = req.params.id; // Assuming the ID is passed as a URL parameter
-    const staff = await Staff.findById(staffId).populate("rewards");
+    const staff = await Staff.findById(staffId).populate('rewards');
 
     if (!staff) {
-      return res.status(404).json({ message: "Staff member not found" });
+      return res.status(404).json({ message: 'Staff member not found' });
     }
 
-    const nextIncrementDate = calculateNextIncrementDate(
-      staff.qualificationCode,
-      staff.lastIncrementDate,
-      staff.rewards
-    );
+    const nextIncrementDate = calculateNextIncrementDate(staff.qualificationCode, staff.lastIncrementDate, staff.rewards);
 
     if (!staff.lastIncrementDate) {
-      staff.lastIncrementDate = new Date().toLocaleDateString().split("T")[0];
+      staff.lastIncrementDate = new Date().toLocaleDateString().split('T')[0];
       await staff.save();
     }
 
@@ -263,12 +247,8 @@ exports.getStaffSalaryIncrementStatus = async (req, res) => {
       mscb: staff.mscb,
       name: staff.name,
       qualificationCode: staff.qualificationCode,
-      lastIncrementDate: new Date(staff.lastIncrementDate)
-        .toLocaleDateString()
-        .split("T")[0],
-      nextIncrementDate: new Date(nextIncrementDate)
-        .toLocaleDateString()
-        .split("T")[0],
+      lastIncrementDate: new Date(staff.lastIncrementDate).toLocaleDateString().split('T')[0],
+      nextIncrementDate: new Date(nextIncrementDate).toLocaleDateString().split('T')[0],
     };
 
     res.json(salaryIncrementStatus);
@@ -281,21 +261,15 @@ exports.getStaffSalaryIncrementStatus = async (req, res) => {
 exports.getStaff = async (req, res) => {
   try {
     // Extract query parameters
-    const {
-      search,
-      page = 1,
-      limit = 10,
-      sortBy = "createdAt",
-      order = "desc",
-    } = req.query;
+    const { search, page = 1, limit = 10, sortBy = 'createdAt', order = 'desc' } = req.query;
 
     // Build the search filter
     let filter = {};
     if (search) {
       filter = {
         $or: [
-          { name: { $regex: `\\b${search}`, $options: "i" } }, // case-insensitive search for name
-          { email: { $regex: `\\b${search}`, $options: "i" } }, // case-insensitive search for email
+          { name: { $regex: `\\b${search}`, $options: 'i' } }, // case-insensitive search for name
+          { email: { $regex: `\\b${search}`, $options: 'i' } }, // case-insensitive search for email
         ],
       };
     }
@@ -304,13 +278,11 @@ exports.getStaff = async (req, res) => {
     const options = {
       skip: (page - 1) * parseInt(limit),
       limit: parseInt(limit),
-      sort: { [sortBy]: order === "asc" ? 1 : -1 },
+      sort: { [sortBy]: order === 'asc' ? 1 : -1 },
     };
 
     // Populate options for related fields
-    const populateOption = populateOptions(
-      "positions unit rewards competitions"
-    );
+    const populateOption = populateOptions('positions unit rewards competitions');
 
     // Get the staff list with search, pagination, and population using findCustomWithPopulate
     const staffList = await findCustomWithPopulate({
@@ -337,25 +309,19 @@ exports.getStaff = async (req, res) => {
 exports.getStaffUnitLess = async (req, res) => {
   try {
     // Lấy danh sách nhân viên chưa có đơn vị
-    const staffWithoutUnit = await Staff.find({ unit: null }).select(
-      "name mscb"
-    );
+    const staffWithoutUnit = await Staff.find({ unit: null }).select('name mscb');
 
     if (!staffWithoutUnit.length) {
       // Nếu không có kết quả, trả về thông báo
-      return res
-        .status(404)
-        .json({ message: "No staff members without unit found" });
+      return res.status(404).json({ message: 'No staff members without unit found' });
     }
 
     // Trả về danh sách
     res.status(200).json(staffWithoutUnit);
   } catch (err) {
     // Log lỗi chi tiết để debug nếu cần
-    console.error("Error fetching staff without unit:", err.message);
-    res
-      .status(500)
-      .json({ message: "An error occurred while fetching staff without unit" });
+    console.error('Error fetching staff without unit:', err.message);
+    res.status(500).json({ message: 'An error occurred while fetching staff without unit' });
   }
 };
 
@@ -367,14 +333,14 @@ exports.exportSalaryIncrementsToExcel = async (req, res) => {
     if (search) {
       filter = {
         $or: [
-          { name: { $regex: `\\b${search}`, $options: "i" } },
-          { mscb: { $regex: `\\b${search}`, $options: "i" } },
-          { qualificationCode: { $regex: `\\b${search}`, $options: "i" } },
+          { name: { $regex: `\\b${search}`, $options: 'i' } },
+          { mscb: { $regex: `\\b${search}`, $options: 'i' } },
+          { qualificationCode: { $regex: `\\b${search}`, $options: 'i' } },
         ],
       };
     }
 
-    const staffList = await Staff.find(filter).populate("rewards");
+    const staffList = await Staff.find(filter).populate('rewards');
 
     const salaryIncrements = await Promise.all(
       staffList.map(async (staff, index) => {
@@ -386,15 +352,11 @@ exports.exportSalaryIncrementsToExcel = async (req, res) => {
 
         return {
           STT: index + 1,
-          "Mã số cán bộ": staff.mscb,
-          "Họ và tên": staff.name,
-          "Mã năng lực": staff.qualificationCode,
-          "Ngày cuối tăng lương":
-            staff.lastIncrementDate &&
-            new Date(staff.lastIncrementDate).toLocaleDateString("vi-VN"),
-          "Ngày tiếp theo tăng lương":
-            nextIncrementDate &&
-            new Date(nextIncrementDate).toLocaleDateString("vi-VN"),
+          'Mã số cán bộ': staff.mscb,
+          'Họ và tên': staff.name,
+          'Mã năng lực': staff.qualificationCode,
+          'Ngày cuối tăng lương': staff.lastIncrementDate && new Date(staff.lastIncrementDate).toLocaleDateString('vi-VN'),
+          'Ngày tiếp theo tăng lương': nextIncrementDate && new Date(nextIncrementDate).toLocaleDateString('vi-VN'),
         };
       })
     );
@@ -403,7 +365,7 @@ exports.exportSalaryIncrementsToExcel = async (req, res) => {
     const worksheet = XLSX.utils.json_to_sheet(salaryIncrements);
 
     // Định dạng tiêu đề in đậm
-    const range = XLSX.utils.decode_range(worksheet["!ref"]);
+    const range = XLSX.utils.decode_range(worksheet['!ref']);
     for (let C = range.s.c; C <= range.e.c; ++C) {
       const cellAddress = XLSX.utils.encode_cell({ r: 0, c: C });
       if (!worksheet[cellAddress]) continue;
@@ -424,25 +386,171 @@ exports.exportSalaryIncrementsToExcel = async (req, res) => {
 
     // Tạo workbook và thêm worksheet
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Salary Increments");
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Salary Increments');
 
     // Ghi workbook vào buffer
     const buffer = XLSX.write(workbook, {
-      type: "buffer",
-      bookType: "xlsx",
+      type: 'buffer',
+      bookType: 'xlsx',
       cellStyles: true, // Đảm bảo hỗ trợ cell styles
     });
 
-    res.setHeader(
-      "Content-Disposition",
-      "attachment; filename=SalaryIncrements.xlsx"
-    );
-    res.setHeader(
-      "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    );
+    res.setHeader('Content-Disposition', 'attachment; filename=SalaryIncrements.xlsx');
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 
     res.send(buffer);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Cập nhật ngạch giảng viên
+exports.updateTeacherGrade = async (req, res) => {
+  try {
+    const { teacherGrade } = req.body;
+    const staff = await Staff.findById(req.params.id);
+
+    if (!staff) {
+      return res.status(404).json({ message: 'Không tìm thấy giảng viên' });
+    }
+
+    // Kiểm tra mã ngạch hợp lệ
+    if (!Object.values(TeacherGrade).includes(teacherGrade)) {
+      return res.status(400).json({ message: 'Mã ngạch không hợp lệ' });
+    }
+
+    // Cập nh���t mã ngạch và reset về bậc 1
+    staff.teacherGrade = teacherGrade;
+    staff.salaryLevel = 1;
+
+    // Lưu thay đổi (middleware sẽ tự động tính toán hệ số và lương)
+    await staff.save();
+
+    res.json({
+      message: 'Cập nhật mã ngạch thành công',
+      staff: {
+        teacherGrade: staff.teacherGrade,
+        salaryLevel: staff.salaryLevel,
+        salaryCoefficent: staff.salaryCoefficent,
+        salary: staff.salary,
+        nextPromotionDate: staff.nextPromotionDate,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Nâng bậc lương
+exports.promoteSalaryLevel = async (req, res) => {
+  try {
+    const staff = await Staff.findById(req.params.id);
+
+    if (!staff) {
+      return res.status(404).json({ message: 'Không tìm thấy giảng viên' });
+    }
+
+    // Kiểm tra giới hạn bậc theo ngạch
+    const maxLevel = {
+      [TeacherGrade.GRADE_I]: 6,
+      [TeacherGrade.GRADE_II]: 8,
+      [TeacherGrade.GRADE_III]: 9,
+    }[staff.teacherGrade];
+
+    if (staff.salaryLevel >= maxLevel) {
+      return res.status(400).json({ message: 'Đã đạt bậc lương tối đa' });
+    }
+
+    // Kiểm tra thời gian nâng bậc
+    const today = new Date();
+    const nextPromotionDate = new Date(staff.nextPromotionDate);
+
+    if (today < nextPromotionDate) {
+      return res.status(400).json({
+        message: 'Chưa đến thời gian nâng bậc lương',
+        nextPromotionDate: nextPromotionDate.toLocaleDateString('vi-VN'),
+      });
+    }
+
+    // Tăng bậc lương
+    staff.salaryLevel += 1;
+
+    // Lưu thay đổi (middleware sẽ tự động tính toán hệ số và lương)
+    await staff.save();
+
+    res.json({
+      message: 'Nâng bậc lương thành công',
+      staff: {
+        teacherGrade: staff.teacherGrade,
+        salaryLevel: staff.salaryLevel,
+        salaryCoefficent: staff.salaryCoefficent,
+        salary: staff.salary,
+        nextPromotionDate: staff.nextPromotionDate,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Lấy thông tin lương của giảng viên
+exports.getSalaryInfo = async (req, res) => {
+  try {
+    const staff = await Staff.findById(req.params.id);
+
+    if (!staff) {
+      return res.status(404).json({ message: 'Không tìm thấy giảng viên' });
+    }
+
+    const maxLevel = {
+      [TeacherGrade.GRADE_I]: 6,
+      [TeacherGrade.GRADE_II]: 8,
+      [TeacherGrade.GRADE_III]: 9,
+    }[staff.teacherGrade];
+
+    res.json({
+      teacherGrade: staff.teacherGrade,
+      salaryLevel: staff.salaryLevel,
+      maxSalaryLevel: maxLevel,
+      salaryCoefficent: staff.salaryCoefficent,
+      salary: staff.salary,
+      nextPromotionDate: staff.nextPromotionDate,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Giảm bậc lương
+exports.demoteSalaryLevel = async (req, res) => {
+  try {
+    const staff = await Staff.findById(req.params.id);
+
+    if (!staff) {
+      return res.status(404).json({ message: 'Không tìm thấy giảng viên' });
+    }
+
+    // Kiểm tra bậc lương tối thiểu
+    if (staff.salaryLevel <= 1) {
+      return res.status(400).json({ message: 'Đã đạt bậc lương tối thiểu' });
+    }
+
+    // Giảm bậc lương
+    staff.salaryLevel -= 1;
+
+    // Lưu thay đổi (middleware sẽ tự động tính toán hệ số và lương)
+    await staff.save();
+
+    res.json({
+      message: 'Giảm bậc lương thành công',
+      staff: {
+        teacherGrade: staff.teacherGrade,
+        salaryLevel: staff.salaryLevel,
+        salaryCoefficent: staff.salaryCoefficent,
+        salary: staff.salary,
+        nextPromotionDate: staff.nextPromotionDate,
+      },
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
