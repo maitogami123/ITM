@@ -86,10 +86,16 @@ exports.updateStaff = async (req, res) => {
     unit,
     rewards,
     competitions,
+    teacherGrade,
   } = req.body;
   try {
     const staff = await Staff.findById(req.params.id);
     if (!staff) return res.status(404).json({ message: 'Staff member not found' });
+
+    // Validate teacherGrade if it's being updated
+    if (teacherGrade && !Object.values(TeacherGrade).includes(teacherGrade)) {
+      return res.status(400).json({ message: 'Mã ngạch không hợp lệ' });
+    }
 
     staff.mscb = mscb || staff.mscb;
     staff.name = name || staff.name;
@@ -102,11 +108,13 @@ exports.updateStaff = async (req, res) => {
     staff.notes = notes || staff.notes;
     staff.positions = positions || staff.positions;
     staff.mainSpecialization = mainSpecialization || staff.mainSpecialization;
+    staff.teacherGrade = teacherGrade || staff.teacherGrade;
+
     if (unit && staff.unit !== unit) {
       await Unit.findByIdAndUpdate(
         staff.unit,
         { $pull: { staffs: new mongoose.Types.ObjectId(req.params.id) } },
-        { new: true } // Return the updated document
+        { new: true }
       );
       const foundUnit = await Unit.findById(req.params.unitId || unit);
       foundUnit.staffs.push(staff);
@@ -127,6 +135,12 @@ exports.updateStaffUnit = async (req, res) => {
   try {
     const staff = await Staff.findById(req.params.staffId);
     if (!staff) return res.status(404).json({ message: 'Staff member not found' });
+
+    // Ensure teacherGrade exists before updating unit
+    if (!staff.teacherGrade) {
+      return res.status(400).json({ message: 'Giảng viên chưa được phân ngạch' });
+    }
+
     staff.unit = req.params.unitId || staff.unit;
     await staff.save();
 
@@ -143,11 +157,20 @@ exports.updateStaffUnit = async (req, res) => {
 // Delete a staff member by ID
 exports.deleteStaff = async (req, res) => {
   try {
-    const staff = await Staff.findByIdAndDelete(req.params.id);
-    const unit = await Unit.findById(staff.unit);
-    unit.staffs = unit.staffs.filter((staff) => staff._id !== staff._id);
-    await unit.save();
-    if (!staff) return res.status(404).json({ message: 'Staff member not found' });
+    // First find the staff to get the unit reference before deletion
+    const staff = await Staff.findById(req.params.id);
+    if (!staff) {
+      return res.status(404).json({ message: 'Staff member not found' });
+    }
+
+    // If staff has a unit, remove staff from unit's staffs array
+    if (staff.unit) {
+      await Unit.findByIdAndUpdate(staff.unit, { $pull: { staffs: staff._id } }, { new: true });
+    }
+
+    // Now delete the staff
+    await Staff.findByIdAndDelete(req.params.id);
+
     res.json({ message: 'Staff member deleted successfully' });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -157,32 +180,27 @@ exports.deleteStaff = async (req, res) => {
 // List listSalaryIncrements
 exports.listSalaryIncrements = async (req, res) => {
   try {
-    // Extract query parameters
     const { search, page = 1, limit = 10, sortBy = 'createdAt', order = 'desc' } = req.query;
 
-    // Build the search filter
     let filter = {};
     if (search) {
       filter = {
         $or: [
-          { name: { $regex: `\\b${search}`, $options: 'i' } }, // case-insensitive search for name
-          { mscb: { $regex: `\\b${search}`, $options: 'i' } }, // case-insensitive search for email
-          { qualificationCode: { $regex: `\\b${search}`, $options: 'i' } }, // case-insensitive search for email
+          { name: { $regex: `\\b${search}`, $options: 'i' } },
+          { mscb: { $regex: `\\b${search}`, $options: 'i' } },
+          { qualificationCode: { $regex: `\\b${search}`, $options: 'i' } },
         ],
       };
     }
 
-    // Pagination and sorting options
     const options = {
       skip: (page - 1) * parseInt(limit),
       limit: parseInt(limit),
       sort: { [sortBy]: order === 'asc' ? 1 : -1 },
     };
 
-    // Populate options for related fields
     const populateOption = populateOptions('rewards');
 
-    // const staffList = await Staff.find().populate("rewards");
     const staffList = await findCustomWithPopulate({
       model: Staff.find(filter, null, options),
       populateOptions: populateOption,
@@ -192,22 +210,26 @@ exports.listSalaryIncrements = async (req, res) => {
 
     const salaryIncrements = await Promise.all(
       staffList.map(async (staff) => {
-        const nextIncrementDate = calculateNextIncrementDate(
-          staff.qualificationCode,
-          staff.lastIncrementDate,
-          staff.rewards
-        );
-        if (!staff.lastIncrementDate) {
-          staff.lastIncrementDate = new Date().toLocaleDateString().split('T')[0];
-          await staff.save();
-        }
+        const nextIncrementDate = calculateNextIncrementDate(staff.teacherGrade, staff.lastIncrementDate, staff.rewards);
+
+        // Calculate remaining time
+        const today = new Date();
+        const nextDate = new Date(nextIncrementDate);
+        const remainingMonths = Math.max(0, Math.ceil((nextDate - today) / (1000 * 60 * 60 * 24 * 30.44)));
 
         return {
           mscb: staff.mscb,
           name: staff.name,
           qualificationCode: staff.qualificationCode,
-          lastIncrementDate: new Date(staff.lastIncrementDate).toLocaleDateString().split('T')[0],
-          nextIncrementDate: new Date(nextIncrementDate).toLocaleDateString().split('T')[0],
+          teacherGrade: staff.teacherGrade,
+          salaryLevel: staff.salaryLevel,
+          salaryCoefficent: staff.salaryCoefficent,
+          salary: staff.salary,
+          lastIncrementDate: staff.lastIncrementDate && new Date(staff.lastIncrementDate).toLocaleDateString('vi-VN'),
+          nextIncrementDate: nextIncrementDate && new Date(nextIncrementDate).toLocaleDateString('vi-VN'),
+          remainingMonths: remainingMonths,
+          rewardsCount: staff.rewards?.filter((r) => r.type === 'REWARD').length || 0,
+          competitionsCount: staff.rewards?.filter((r) => r.type === 'COMPETITION').length || 0,
         };
       })
     );
@@ -404,11 +426,30 @@ exports.exportSalaryIncrementsToExcel = async (req, res) => {
   }
 };
 
+// Helper function to calculate reduced promotion date
+const calculateReducedPromotionDate = (baseDate, rewards = [], competitions = []) => {
+  let reducedDate = new Date(baseDate);
+
+  // Reduce 3 months for each reward
+  const rewardReduction = rewards.length * 3;
+
+  // Reduce 1 month for each competition
+  const competitionReduction = competitions.length;
+
+  // Total reduction in months
+  const totalReductionMonths = rewardReduction + competitionReduction;
+
+  // Apply reduction
+  reducedDate.setMonth(reducedDate.getMonth() - totalReductionMonths);
+
+  return reducedDate;
+};
+
 // Cập nhật ngạch giảng viên
 exports.updateTeacherGrade = async (req, res) => {
   try {
     const { teacherGrade } = req.body;
-    const staff = await Staff.findById(req.params.id);
+    const staff = await Staff.findById(req.params.id).populate('rewards competitions');
 
     if (!staff) {
       return res.status(404).json({ message: 'Không tìm thấy giảng viên' });
@@ -419,9 +460,29 @@ exports.updateTeacherGrade = async (req, res) => {
       return res.status(400).json({ message: 'Mã ngạch không hợp lệ' });
     }
 
-    // Cập nh���t mã ngạch và reset về bậc 1
+    // Cập nhật mã ngạch và reset về bậc 1
     staff.teacherGrade = teacherGrade;
     staff.salaryLevel = 1;
+
+    // Calculate base promotion date based on grade
+    const today = new Date();
+    let basePromotionDate;
+    switch (teacherGrade) {
+      case TeacherGrade.GRADE_I:
+        basePromotionDate = new Date(today.setFullYear(today.getFullYear() + 5));
+        break;
+      case TeacherGrade.GRADE_II:
+        basePromotionDate = new Date(today.setFullYear(today.getFullYear() + 3));
+        break;
+      case TeacherGrade.GRADE_III:
+        basePromotionDate = new Date(today.setFullYear(today.getFullYear() + 2));
+        break;
+      default:
+        basePromotionDate = today;
+    }
+
+    // Calculate reduced promotion date based on rewards and competitions
+    staff.nextPromotionDate = calculateReducedPromotionDate(basePromotionDate, staff.rewards, staff.competitions);
 
     // Lưu thay đổi (middleware sẽ tự động tính toán hệ số và lương)
     await staff.save();
@@ -444,7 +505,7 @@ exports.updateTeacherGrade = async (req, res) => {
 // Nâng bậc lương
 exports.promoteSalaryLevel = async (req, res) => {
   try {
-    const staff = await Staff.findById(req.params.id);
+    const staff = await Staff.findById(req.params.id).populate('rewards competitions');
 
     if (!staff) {
       return res.status(404).json({ message: 'Không tìm thấy giảng viên' });
@@ -474,6 +535,25 @@ exports.promoteSalaryLevel = async (req, res) => {
 
     // Tăng bậc lương
     staff.salaryLevel += 1;
+
+    // Calculate new base promotion date
+    let basePromotionDate;
+    switch (staff.teacherGrade) {
+      case TeacherGrade.GRADE_I:
+        basePromotionDate = new Date(today.setFullYear(today.getFullYear() + 5));
+        break;
+      case TeacherGrade.GRADE_II:
+        basePromotionDate = new Date(today.setFullYear(today.getFullYear() + 3));
+        break;
+      case TeacherGrade.GRADE_III:
+        basePromotionDate = new Date(today.setFullYear(today.getFullYear() + 2));
+        break;
+      default:
+        basePromotionDate = today;
+    }
+
+    // Calculate reduced promotion date based on rewards and competitions
+    staff.nextPromotionDate = calculateReducedPromotionDate(basePromotionDate, staff.rewards, staff.competitions);
 
     // Lưu thay đổi (middleware sẽ tự động tính toán hệ số và lương)
     await staff.save();

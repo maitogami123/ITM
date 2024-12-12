@@ -1,20 +1,16 @@
-const { model } = require("mongoose");
-const {
-  populateOptions,
-  findCustomWithPopulate,
-} = require("../custom/CustomFinding");
-const Reward = require("../models/rewardModel");
-const Staff = require("../models/staffModel");
-const Competition = require("../models/competitionModel");
+const { model } = require('mongoose');
+const { populateOptions, findCustomWithPopulate } = require('../custom/CustomFinding');
+const Reward = require('../models/rewardModel');
+const Staff = require('../models/staffModel');
+const Competition = require('../models/competitionModel');
+const { calculateNextIncrementDate } = require('../utils/salaryIncrement');
 
 // Create a new reward
 exports.createReward = async (req, res) => {
   const reward = new Reward(req.body);
   try {
     const newReward = await reward.save();
-    res
-      .status(201)
-      .json({ message: "Reward created successfully", reward: newReward });
+    res.status(201).json({ message: 'Reward created successfully', reward: newReward });
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
@@ -23,20 +19,14 @@ exports.createReward = async (req, res) => {
 // Get all rewards
 exports.getRewards = async (req, res) => {
   try {
-    const {
-      search,
-      page = 1,
-      limit = 10,
-      sortBy = "createdAt",
-      order = "desc",
-    } = req.query;
+    const { search, page = 1, limit = 10, sortBy = 'createdAt', order = 'desc' } = req.query;
 
     // Build the search filter
     let filter = {};
     if (search) {
       filter = {
         $or: [
-          { title: { $regex: `\\b${search}`, $options: "i" } }, // case-insensitive search for name
+          { title: { $regex: `\\b${search}`, $options: 'i' } }, // case-insensitive search for name
           // { date: { $regex: `\\b${search}`, $options: 'i' } }, // case-insensitive search for email
         ],
       };
@@ -46,13 +36,13 @@ exports.getRewards = async (req, res) => {
     const options = {
       skip: (page - 1) * parseInt(limit),
       limit: parseInt(limit),
-      sort: { [sortBy]: order === "asc" ? 1 : -1 },
+      sort: { [sortBy]: order === 'asc' ? 1 : -1 },
     };
 
     // Populate options for related fields
     const populateOption = [
-      populateOptions("staff"), // Lấy toàn bộ thông tin từ staff
-      populateOptions("competition"), // Lấy toàn bộ thông tin từ competition
+      populateOptions('staff'), // Lấy toàn bộ thông tin từ staff
+      populateOptions('competition'), // Lấy toàn bộ thông tin từ competition
     ];
 
     // Get the staff list with search, pagination, and population using findCustomWithPopulate
@@ -85,9 +75,9 @@ exports.getRewardById = async (req, res) => {
     const reward = await findCustomWithPopulate({
       model: Reward,
       id: req.params.id,
-      populateOptions: populateOptions("staff competition"),
+      populateOptions: populateOptions('staff competition'),
     });
-    if (!reward) return res.status(404).json({ message: "Reward not found" });
+    if (!reward) return res.status(404).json({ message: 'Reward not found' });
     res.json(reward);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -99,33 +89,32 @@ exports.getRewardStaffLess = async (req, res) => {
   const { id } = req.params;
 
   try {
-    // Tìm phần thưởng dựa trên rewardId
-    const reward = await Reward.findById(id).select("staff");
+    // Find reward based on rewardId
+    const reward = await Reward.findById(id).select('staff');
 
     if (!reward) {
-      return res.status(404).json({ message: "Reward not found" });
+      return res.status(404).json({ message: 'Reward not found' });
     }
 
-    // Lấy ID của nhân viên đã liên kết với phần thưởng (nếu có)
+    // Get ID of staff linked to reward (if any)
     const staffLinkedToReward = reward.staff;
 
-    // Tìm tất cả nhân viên chưa liên kết với phần thưởng này
+    // Find all staff not linked to this reward, including teacherGrade
     const staffNotLinkedToReward = await Staff.find({
-      _id: { $ne: staffLinkedToReward }, // Loại trừ nhân viên đã liên kết
-    }).select("name mscb mainSpecialization");
+      _id: { $ne: staffLinkedToReward }, // Exclude already linked staff
+      teacherGrade: { $exists: true }, // Only include staff with teacherGrade
+    }).select('name mscb mainSpecialization teacherGrade');
 
     if (!staffNotLinkedToReward.length) {
-      return res
-        .status(404)
-        .json({ message: "No staff available for this reward" });
+      return res.status(404).json({ message: 'No staff available for this reward' });
     }
 
-    // Trả về danh sách nhân viên chưa liên kết
+    // Return list of unlinked staff
     res.status(200).json(staffNotLinkedToReward);
   } catch (err) {
-    console.error("Error fetching staff not linked to reward:", err.message);
+    console.error('Error fetching staff not linked to reward:', err.message);
     res.status(500).json({
-      message: "An error occurred while fetching staff not linked to reward",
+      message: 'An error occurred while fetching staff not linked to reward',
     });
   }
 };
@@ -134,36 +123,43 @@ exports.addStaffToReward = async (req, res) => {
   const { id: rewardId, staffId } = req.params;
 
   try {
-    // Tìm Reward
+    // Find Reward
     const reward = await Reward.findById(rewardId);
     if (!reward) {
-      return res.status(404).json({ message: "Reward not found" });
+      return res.status(404).json({ message: 'Reward not found' });
     }
 
-    // Tìm Staff
-    const staff = await Staff.findById(staffId);
+    // Find Staff
+    const staff = await Staff.findById(staffId).populate('rewards');
     if (!staff) {
-      return res.status(404).json({ message: "Staff not found" });
+      return res.status(404).json({ message: 'Staff not found' });
     }
 
-    // Kiểm tra xem Reward đã có staff này chưa
-    if (reward && reward.staff === staffId) {
-      return res
-        .status(400)
-        .json({ message: "Staff already added to this reward" });
+    // Check if staff is already added to this reward
+    if (reward.staff?.toString() === staffId) {
+      return res.status(400).json({ message: 'Staff already added to this reward' });
     }
 
-    // Thêm Staff vào Reward
-    reward.staff = staffId; // Gán staff vào phần thưởng
+    // Add Staff to Reward
+    reward.staff = staffId;
     await reward.save();
 
-    // Thêm phần thưởng vào danh sách rewards của Staff nếu chưa có
+    // Add reward to Staff's rewards array if not already present
     if (!staff.rewards.includes(rewardId)) {
       staff.rewards.push(rewardId);
+
+      // Recalculate next increment date based on updated rewards
+      const nextIncrementDate = calculateNextIncrementDate(
+        staff.teacherGrade,
+        staff.lastIncrementDate,
+        [...staff.rewards, reward] // Include the new reward
+      );
+      staff.nextPromotionDate = nextIncrementDate;
+
       await staff.save();
     }
 
-    // Kiểm tra và cập nhật nếu phần thưởng có liên kết với một competition
+    // Update competition if present
     if (reward.competition) {
       const competition = await Competition.findById(reward.competition);
       if (competition && !competition.staffs.includes(staffId)) {
@@ -172,13 +168,13 @@ exports.addStaffToReward = async (req, res) => {
       }
     }
 
-    // Phản hồi thành công
     res.json({
-      message: "Staff added to reward successfully",
+      message: 'Staff added to reward successfully',
       reward,
+      nextIncrementDate: staff.nextPromotionDate,
     });
   } catch (error) {
-    console.error("Error adding staff to reward:", error);
+    console.error('Error adding staff to reward:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -188,7 +184,7 @@ exports.updateReward = async (req, res) => {
   const { title, date, staff, competition } = req.body;
   try {
     const reward = await Reward.findById(req.params.id);
-    if (!reward) return res.status(404).json({ message: "Reward not found" });
+    if (!reward) return res.status(404).json({ message: 'Reward not found' });
 
     reward.title = title || reward.title;
     reward.date = date || reward.date;
@@ -196,7 +192,7 @@ exports.updateReward = async (req, res) => {
     reward.competition = competition || reward.competition;
 
     await reward.save();
-    res.json({ message: "Reward updated successfully", reward });
+    res.json({ message: 'Reward updated successfully', reward });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -206,8 +202,8 @@ exports.updateReward = async (req, res) => {
 exports.deleteReward = async (req, res) => {
   try {
     const reward = await Reward.findByIdAndDelete(req.params.id);
-    if (!reward) return res.status(404).json({ message: "Reward not found" });
-    res.json({ message: "Reward deleted successfully" });
+    if (!reward) return res.status(404).json({ message: 'Reward not found' });
+    res.json({ message: 'Reward deleted successfully' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -220,20 +216,18 @@ exports.removeStaffFromReward = async (req, res) => {
     // Tìm Reward
     const reward = await Reward.findById(rewardId);
     if (!reward) {
-      return res.status(404).json({ message: "Reward not found" });
+      return res.status(404).json({ message: 'Reward not found' });
     }
 
     // Tìm Staff
     const staff = await Staff.findById(staffId);
     if (!staff) {
-      return res.status(404).json({ message: "Staff not found" });
+      return res.status(404).json({ message: 'Staff not found' });
     }
 
     // Kiểm tra xem Staff có liên kết với Reward không
     if (reward.staff?.toString() !== staffId) {
-      return res
-        .status(400)
-        .json({ message: "Staff is not associated with this reward" });
+      return res.status(400).json({ message: 'Staff is not associated with this reward' });
     }
 
     // Xóa liên kết Staff khỏi Reward
@@ -246,11 +240,11 @@ exports.removeStaffFromReward = async (req, res) => {
 
     // Phản hồi thành công
     res.json({
-      message: "Staff removed from reward successfully",
+      message: 'Staff removed from reward successfully',
       reward,
     });
   } catch (error) {
-    console.error("Error removing staff from reward:", error);
+    console.error('Error removing staff from reward:', error);
     res.status(500).json({ message: error.message });
   }
 };
