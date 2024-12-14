@@ -1,6 +1,8 @@
 const Staff = require("../models/staffModel");
 const Unit = require("../models/unitModel");
 const User = require("../models/userModel");
+const path = require("path");
+const fs = require("fs");
 const { calculateNextIncrementDate } = require("../utils/salaryIncrement");
 const formatDate = require("../utils/formatDate");
 const mongoose = require("mongoose");
@@ -339,6 +341,7 @@ exports.getStaff = async (req, res) => {
         $or: [
           { name: { $regex: `\\b${search}`, $options: "i" } }, // case-insensitive search for name
           { email: { $regex: `\\b${search}`, $options: "i" } }, // case-insensitive search for email
+          { mscb: { $regex: `\\b${search}`, $options: "i" } },
         ],
       };
     }
@@ -730,5 +733,50 @@ exports.demoteSalaryLevel = async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+};
+
+exports.uploadStaffImage = async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).send("id không đúng định dạng");
+    }
+    // Kiểm tra nếu không có file được upload
+    if (!req.file) {
+      return res
+        .status(400)
+        .json({ error: "Vui lòng tải lên một file ảnh hợp lệ." });
+    }
+
+    // Tìm kiếm staff theo ID
+    const staff = await Staff.findById(req.params.id);
+    if (!staff) {
+      return res
+        .status(404)
+        .json({ error: "Không tìm thấy nhân viên với ID này." });
+    }
+
+    // Nếu nhân viên đã có ảnh trước đó, xóa file ảnh cũ
+    if (staff.image) {
+      const oldImagePath = path.join(__dirname, "../", staff.image);
+      if (fs.existsSync(oldImagePath)) {
+        fs.unlinkSync(oldImagePath); // Xóa ảnh cũ
+      }
+    }
+
+    // Cập nhật đường dẫn ảnh mới vào thuộc tính `image`
+    staff.image = `/uploads/images/${req.file.filename}`;
+    await staff.save();
+
+    res.status(200).json({
+      message: "Ảnh được tải lên và cập nhật thành công.",
+      imagePath: staff.image,
+    });
+  } catch (error) {
+    console.error("Lỗi khi upload ảnh:", error);
+    res.status(500).json({
+      error: "Đã xảy ra lỗi khi upload ảnh.",
+      details: error.message,
+    });
   }
 };

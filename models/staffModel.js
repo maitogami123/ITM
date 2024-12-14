@@ -6,6 +6,7 @@ const TeacherGrade = require("./enum/TeacherGrade");
 const staffSchema = new mongoose.Schema({
   mscb: { type: String, unique: true, required: true },
   name: { type: String },
+  image: { type: String },
   gender: {
     type: String,
     enum: Object.values(Gender),
