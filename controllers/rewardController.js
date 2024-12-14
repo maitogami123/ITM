@@ -130,7 +130,7 @@ exports.addStaffToReward = async (req, res) => {
     }
 
     // Find Staff
-    const staff = await Staff.findById(staffId).populate('rewards');
+    const staff = await Staff.findById(staffId).populate('rewards competitions');
     if (!staff) {
       return res.status(404).json({ message: 'Staff not found' });
     }
@@ -147,16 +147,7 @@ exports.addStaffToReward = async (req, res) => {
     // Add reward to Staff's rewards array if not already present
     if (!staff.rewards.includes(rewardId)) {
       staff.rewards.push(rewardId);
-
-      // Recalculate next increment date based on updated rewards
-      const nextIncrementDate = calculateNextIncrementDate(
-        staff.teacherGrade,
-        staff.lastIncrementDate,
-        [...staff.rewards, reward] // Include the new reward
-      );
-      staff.nextPromotionDate = nextIncrementDate;
-
-      await staff.save();
+      await staff.save(); // This will trigger the pre-save middleware that recalculates nextPromotionDate
     }
 
     // Update competition if present
@@ -168,10 +159,13 @@ exports.addStaffToReward = async (req, res) => {
       }
     }
 
+    // Fetch the updated staff to get the new promotion date
+    const updatedStaff = await Staff.findById(staffId);
+
     res.json({
       message: 'Staff added to reward successfully',
       reward,
-      nextIncrementDate: staff.nextPromotionDate,
+      nextPromotionDate: updatedStaff.nextPromotionDate,
     });
   } catch (error) {
     console.error('Error adding staff to reward:', error);
@@ -210,38 +204,41 @@ exports.deleteReward = async (req, res) => {
 };
 
 exports.removeStaffFromReward = async (req, res) => {
-  const { id: rewardId, staffId } = req.params; // Lấy rewardId và staffId từ URL params
+  const { id: rewardId, staffId } = req.params;
 
   try {
-    // Tìm Reward
+    // Find Reward
     const reward = await Reward.findById(rewardId);
     if (!reward) {
       return res.status(404).json({ message: 'Reward not found' });
     }
 
-    // Tìm Staff
+    // Find Staff
     const staff = await Staff.findById(staffId);
     if (!staff) {
       return res.status(404).json({ message: 'Staff not found' });
     }
 
-    // Kiểm tra xem Staff có liên kết với Reward không
+    // Check if Staff is linked to Reward
     if (reward.staff?.toString() !== staffId) {
       return res.status(400).json({ message: 'Staff is not associated with this reward' });
     }
 
-    // Xóa liên kết Staff khỏi Reward
-    reward.staff = null; // Gỡ liên kết staff khỏi phần thưởng
+    // Remove Staff from Reward
+    reward.staff = null;
     await reward.save();
 
-    // Xóa Reward khỏi danh sách rewards của Staff
+    // Remove Reward from Staff's rewards array
     staff.rewards = staff.rewards.filter((id) => id.toString() !== rewardId);
-    await staff.save();
+    await staff.save(); // This will trigger the pre-save middleware that recalculates nextPromotionDate
 
-    // Phản hồi thành công
+    // Fetch the updated staff to get the new promotion date
+    const updatedStaff = await Staff.findById(staffId);
+
     res.json({
       message: 'Staff removed from reward successfully',
       reward,
+      nextPromotionDate: updatedStaff.nextPromotionDate,
     });
   } catch (error) {
     console.error('Error removing staff from reward:', error);

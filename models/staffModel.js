@@ -1,7 +1,7 @@
-const mongoose = require("mongoose");
-const QualificationCode = require("./enum/QualificationCode"); // Import the enum
-const Gender = require("./enum/Gender");
-const TeacherGrade = require("./enum/TeacherGrade");
+const mongoose = require('mongoose');
+const QualificationCode = require('./enum/QualificationCode'); // Import the enum
+const Gender = require('./enum/Gender');
+const TeacherGrade = require('./enum/TeacherGrade');
 
 const staffSchema = new mongoose.Schema({
   mscb: { type: String, unique: true, required: true },
@@ -24,21 +24,21 @@ const staffSchema = new mongoose.Schema({
     type: String,
     default: () => {
       const date = new Date(Date.now());
-      return date.toLocaleDateString("en-US", {
-        month: "2-digit",
-        day: "2-digit",
-        year: "numeric",
+      return date.toLocaleDateString('en-US', {
+        month: '2-digit',
+        day: '2-digit',
+        year: 'numeric',
       });
     },
   },
   lastIncrementDate: { type: String },
   notes: { type: String },
   mainSpecialization: { type: String },
-  positions: [{ type: mongoose.Schema.Types.ObjectId, ref: "Position" }],
-  unit: { type: mongoose.Schema.Types.ObjectId, ref: "Unit" },
-  rewards: [{ type: mongoose.Schema.Types.ObjectId, ref: "Reward" }],
-  competitions: [{ type: mongoose.Schema.Types.ObjectId, ref: "Competition" }],
-  user: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // Tham chiếu tới User
+  positions: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Position' }],
+  unit: { type: mongoose.Schema.Types.ObjectId, ref: 'Unit' },
+  rewards: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Reward' }],
+  competitions: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Competition' }],
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Tham chiếu tới User
   teacherGrade: {
     type: String,
     enum: Object.values(TeacherGrade),
@@ -91,8 +91,8 @@ const staffSchema = new mongoose.Schema({
 });
 
 // Middleware để tự động cập nhật hệ số lương khi thay đổi bậc lương
-staffSchema.pre("save", function (next) {
-  if (this.isModified("salaryLevel") || this.isModified("teacherGrade")) {
+staffSchema.pre('save', async function (next) {
+  if (this.isModified('salaryLevel') || this.isModified('teacherGrade')) {
     let baseCoefficient;
     let incrementValue;
 
@@ -114,13 +114,40 @@ staffSchema.pre("save", function (next) {
         incrementValue = 0.33;
     }
 
-    // Tính hệ số lương mới dựa trên bậc lương
-    this.salaryCoefficent =
-      baseCoefficient + incrementValue * (this.salaryLevel - 1);
-    // Cập nhật lương
+    this.salaryCoefficent = baseCoefficient + incrementValue * (this.salaryLevel - 1);
     this.salary = this.salaryCoefficent * 2340000;
   }
+
+  // Calculate base promotion date
+  let basePromotionDate = new Date();
+  switch (this.teacherGrade) {
+    case TeacherGrade.GRADE_I:
+      basePromotionDate.setFullYear(basePromotionDate.getFullYear() + 5);
+      break;
+    case TeacherGrade.GRADE_II:
+      basePromotionDate.setFullYear(basePromotionDate.getFullYear() + 3);
+      break;
+    case TeacherGrade.GRADE_III:
+      basePromotionDate.setFullYear(basePromotionDate.getFullYear() + 2);
+      break;
+  }
+
+  // Calculate reduction in months based on rewards and competitions
+  const rewardsReduction = (this.rewards?.length || 0) * 3; // 3 months per reward
+  const competitionsReduction = (this.competitions?.length || 0) * 1; // 1 month per competition
+  let totalReductionMonths = rewardsReduction + competitionsReduction;
+
+  // Get the total months between now and base promotion date
+  const today = new Date();
+  const monthsDifference =
+    (basePromotionDate.getFullYear() - today.getFullYear()) * 12 + (basePromotionDate.getMonth() - today.getMonth());
+
+  // Limit the reduction to not go below current date
+  totalReductionMonths = Math.min(totalReductionMonths, monthsDifference - 1);
+
+  this.nextPromotionDate = new Date(basePromotionDate.setMonth(basePromotionDate.getMonth() - totalReductionMonths));
+
   next();
 });
 
-module.exports = mongoose.model("Staff", staffSchema);
+module.exports = mongoose.model('Staff', staffSchema);
